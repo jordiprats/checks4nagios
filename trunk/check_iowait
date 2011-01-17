@@ -1,0 +1,34 @@
+#!/bin/bash
+
+IOWAIT=$(iostat | head -n4 | tail -n1 | awk '{print $4}')
+
+XIOWAIT=$(echo $IOWAIT | sed 's/\..*//ig')
+
+while getopts 'u:p:v:w:c:' OPTION
+do
+  case $OPTION in
+  w)    wflag=1
+        wval="$OPTARG"
+        ;;
+  c)    cflag=1
+        cval="$OPTARG"
+        ;;
+  ?)    echo Argument invalid
+        printusage
+        exit 3
+        ;;
+  esac
+done
+
+if [ $XIOWAIT -ge $cval ];
+then
+echo "CRITICAL - IO wait: $IOWAIT%|iowait=$IOWAIT"
+exit 2
+elif [ $XIOWAIT -ge $wval ];
+then
+echo "WARNING - IO wait: $IOWAIT%|iowait=$IOWAIT"
+exit 1
+fi
+
+echo "OK - IO wait: $IOWAIT%|iowait=$IOWAIT"
+
