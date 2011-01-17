@@ -1,0 +1,34 @@
+#!/bin/bash
+
+
+# primer i unic argument per maxim locks
+
+#set -xv 
+
+MAXLOCKS=$1
+
+if [ -z "$MAXLOCKS" ];
+then
+	MAXLOCKS=5
+fi
+
+PASSWORD=$(cat /var/mysql/.mysql.root.pass)
+
+LOCKS=$(echo "show processlist;" | mysql -p${PASSWORD} | grep Lock | wc -l)
+
+if [ -z "$LOCKS" ];
+then
+	echo "UNKNOWN - Segurament el MySQL esta petat"
+	exit 3
+fi
+
+if [ $LOCKS -gt $MAXLOCKS ];
+then
+	echo "CRITICAL: John Locke esta trist perque tens mes de 10 locks... ja no pot caminar|locks=$LOCKS;"
+	exit 2
+fi
+
+echo "OK - John Locke esta felic i camina!!!| locks=$LOCKS;"
+exit 0
+
+
