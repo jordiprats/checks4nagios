@@ -1,0 +1,43 @@
+#!/bin/bash
+
+printusage()
+{
+        echo " la la la "
+}
+
+while getopts 'H:u:p:' OPTION
+do
+  case $OPTION in
+  H)    hflag=1
+        hval="$OPTARG"
+        ;;
+  u)    uflag=1
+        uval="$OPTARG"
+        ;;
+  p)    pflag=1
+        pval="$OPTARG"
+        ;;
+  ?)    echo Argument invalid
+        printusage
+        exit 3
+        ;;
+  esac
+done
+
+
+READ_FIRST=$(echo "show global status like 'Handler%';" | /usr/bin/mysql -u $uval -h $hval --password=$pval --protocol=tcp --port=3306 | grep "^Handler_read_first" | awk '{print $2}')
+READ_KEY=$(echo "show global status like 'Handler%';" | /usr/bin/mysql -u $uval -h $hval --password=$pval --protocol=tcp --port=3306 | grep "^Handler_read_key" | awk '{print $2}')
+READ_NEXT=$(echo "show global status like 'Handler%';" | /usr/bin/mysql -u $uval -h $hval --password=$pval --protocol=tcp --port=3306 | grep "^Handler_read_next" | awk '{print $2}')
+READ_RND=$(echo "show global status like 'Handler%';" | /usr/bin/mysql -u $uval -h $hval --password=$pval --protocol=tcp --port=3306 | grep "^Handler_read_rnd[^_]" | awk '{print $2}')
+READ_RND_NEXT=$(echo "show global status like 'Handler%';" | /usr/bin/mysql -u $uval -h $hval --password=$pval --protocol=tcp --port=3306 | grep "^Handler_read_rnd_next" | awk '{print $2}')
+
+if [ $? -ne 0 ];
+then
+	echo "UNKNOWN"
+	exit 3
+fi
+
+echo "Handler counters - read_first: $READ_FIRST, read_key: $READ_KEY, read_next: $READ_NEXT, read_rnd: $READ_RND, read_rnd_next: $READ_RND_NEXT|readfirst=$READ_FIRST; readkey=$READ_KEY; readnext=$READ_NEXT; readrnd=$READ_RND; readrndnext=$READ_RND_NEXT;"
+
+exit 0
+
