@@ -1,0 +1,65 @@
+#!/bin/bash
+
+GALETA=$(mktemp /tmp/dell.galeta.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX)
+  DATA=$(mktemp /tmp/dell.data.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX)
+
+LOWER=0
+
+while getopts 'lh:' OPT; 
+do
+	case $OPT in
+		l)  LOWER=1
+		;;
+		h)  JELP=1
+		;;
+		[?])  WTF="yes"
+		;;
+	esac
+done
+
+shift $(($OPTIND - 1))
+
+if [ -n "$WTF" ];
+then
+	echo WTF?
+	exit 3;
+fi
+
+if [ -n "$JELP" ];
+then
+	echo $0 [-l] SERIAL
+	exit 3;
+fi
+
+wget 'http://support.dell.com/support/topics/global.aspx/support/my_systems_info/details' --save-cookies $GALETA -O /dev/null 2>/dev/null 
+wget --load-cookies $GALETA --post-data "ServiceTagNumber=&logout=&ServiceTag=$*" 'http://support.dell.com/support/topics/global.aspx/support/my_systems_info/details?c=us&l=en&s=dhs&cs=19' -O $DATA 2>/dev/null
+
+if [ $LOWER == "1" ];
+then
+	RESULTS=$(cat $DATA |  sed 's/<tr[^>]*>/jordiINTROjordi/g' |sed 's/<[^>]*>/ /g' | sed 's/&nbsp;/ /g' | sed 's/{[^}]*}/ /g' | grep ".contract_table" | sed 's/jordiINTROjordi/\n/g' | grep -v ".contract_table" | grep -v "1.800.247.4618" | sed 's/[^0-9]/ /g' | awk '{ print $NF }' | grep "^[0-9]*$")
+else
+	RESULTS=$(cat $DATA |  sed 's/<tr[^>]*>/jordiINTROjordi/g' |sed 's/<[^>]*>/ /g' | sed 's/&nbsp;/ /g' | sed 's/{[^}]*}/ /g' | grep ".contract_table" | sed 's/jordiINTROjordi/\n/g' | grep -v ".contract_table" | grep -v "1.800.247.4618" | sed 's/[^0-9]/ /g' | awk '{ print $NF }' | grep "^[0-9]*$" | sort -rn | head -n1)
+fi
+
+if [ -z "$RESULTS" ];
+then
+	echo "WTF?!?!?!?!?!??! - $*"
+	exit 3
+fi
+
+
+for i in $RESULTS;
+do
+	if [ $i -le 30 ];
+	then
+		echo CRITICAL - $i days left - $*
+		exit 2
+	fi
+	PRINT="$PRINT - $i days left"
+done
+
+rm $GALETA
+rm $DATA
+
+echo OK $PRINT - $*
+
