@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# systemadmin.es
+
+LIST=$(cat /proc/scsi/sg/devices | awk '{ print $NF }')
+
+COUNT=1
+for i in $LIST;
+do
+	FAILED=$(cat /proc/scsi/sg/device_strs | head -n$COUNT | tail -n1)		
+
+	if [ $i -eq "-1" ];
+	then
+		echo CRITICAL - $FAILED
+		exit 2
+	fi
+	
+	if [ $i -ne "1" ];
+	then
+		echo WTF - $FAILED
+		exit 3
+	fi
+
+	let COUNT=COUNT+1
+done
+
+echo OK - $(cat /proc/scsi/sg/device_strs | sed 's/$/ -/' | paste $(perl -e "print \"- \"x$COUNT;"))
+
+
