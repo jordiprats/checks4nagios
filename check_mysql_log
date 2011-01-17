@@ -1,0 +1,47 @@
+#!/bin/bash
+LASTLINE=$(grep -E "^[0-9]{6}" $(echo "show variables like 'log_error';" | mysql -p$(cat /var/mysql/.mysql.root.pass) -N | head -n1 | awk '{ print $NF }') | tail -n1)
+
+if [ $# -gt 0 ]
+then
+        LASTLINE=$@
+fi
+
+if [ -z "$LASTLINE" ];
+then
+        echo "OK"
+        exit 0
+fi
+
+case $LASTLINE in
+
+*'ready for connections'*)
+        echo "OK - MySQL ready :)"
+        exit 0
+        ;;
+
+*'is marked as crashed'*)
+        echo "CRITICAL $(echo $LASTLINE | awk '{ print $6 }') - $LASTLINE"
+        exit 2
+        ;;
+
+*shutdown* | *'Forcing close of thread'*)
+        echo "WARNING - Apagant el MySQL - $LASTLINE"
+        exit 1
+        ;;
+
+*Shutdown*)
+        echo "WARNING - MySQL apagat! - $LASTLINE"
+        exit 1
+        ;;
+
+*'ERROR'*)
+        echo "WARNING error desconegut - $LASTLINE"
+        exit 1
+        ;;
+
+*)
+        echo "Suposo que OK - $LASTLINE"
+        exit 0
+
+esac
+
