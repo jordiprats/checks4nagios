@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#  lynx -dump http://10.12.50.132/server-status
+# Active connections: 6
+# server accepts handled requests
+#  2666 2666 4851
+# Reading: 0 Writing: 1 Waiting: 5
+
+ACTIVE=$(lynx -dump http://$1/server-status | grep "Active connections" | awk '{ print $NF }')
+
+READING=$(lynx -dump http://$1/server-status | grep "Reading" | sed 's#Reading: *\([0-9]*\) .*#\1#')
+WRITING=$(lynx -dump http://$1/server-status | grep "Reading" | sed 's#.* Writing: *\([0-9]*\) .*#\1#')
+WAITING=$(lynx -dump http://$1/server-status | grep "Reading" | sed 's#.* Waiting: *\([0-9]*\)#\1#')
+
+
+echo "Active connections: $ACTIVE Reading: $READING Writing: $WRITING Waiting: $WAITING  | 'active'=$ACTIVE 'reading'=$READING 'writing'=$WRITING 'waiting'=$WAITING"
+
+
