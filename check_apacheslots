@@ -1,0 +1,163 @@
+#!/bin/sh
+###############################################
+#
+# Nagios script to check the number of concurrent requests being processed by Apache
+#
+# NOTE: You may need to tweak your apache config to allow "apachectl fullstatus" to
+#       return information to the 10.12.16.69 or <hostname> for the server you are running this on
+#
+# e.g.
+#       <Location /server-status>
+#               SetHandler server-status
+#               Order deny,allow
+#               Deny from all
+#               Allow from 10.12.16.69 <hostname> ...
+#       </Location>
+#
+# Also requires lynx (or links change variable at top of script)
+#
+# See usage for command line switches
+#
+# Created: 2006-08-11 (i.yates@uea.ac.uk)
+#
+###############################################
+
+
+./utils.sh
+
+
+STATE_WARNING=1
+STATE_OK=0
+STATE_CRITICAL=2
+STATE_WARNING=3
+
+
+VERSION="1.0"
+CHECKNAME="Apache slots"
+
+HOME=/tmp
+LYNX=/usr/bin/lynx
+AWK=/bin/awk
+GREP=/bin/grep
+
+STATUSURL="http://10.12.16.69:80/server-status"
+
+FLAG_VERBOSE=FALSE
+LEVEL_WARN=""
+LEVEL_CRIT=""
+RESULT=""
+EXIT_STATUS=$STATE_OK
+
+###############################################
+#
+## FUNCTIONS
+#
+
+## Print usage
+usage() {
+        echo " check_apacheconcreq $VERSION - Nagios Apache concurrent HTTP requests check script"
+        echo ""
+        echo " Usage: check_apacheconcreq -w <warning level> -c <critical level> [ -v ] [ -h ]"
+        echo ""
+        echo "           -w  Number of concurrent requests at which a warning is triggered"
+        echo "           -c  Number of concurrent requests at which a critical is triggered"
+        echo "           -v  Verbose output (ignored for now)"
+        echo "           -h  Show this page"
+        echo ""
+}
+
+## Process command line options
+doopts() {
+        if ( `test 0 -lt $#` )
+        then
+                while getopts w:c:vh myarg "$@"
+                do
+                        case $myarg in
+                                h|\?)
+                                        usage
+                                        exit;;
+                                w)
+                                        LEVEL_WARN=$OPTARG;;
+                                c)
+                                        LEVEL_CRIT=$OPTARG;;
+                                v)
+                                        FLAG_VERBOSE=TRUE;;
+                                *)      # Default
+                                        usage
+                                        exit;;
+                        esac
+                done
+        else
+                usage
+                exit
+        fi
+}
+
+
+# Write output and return result
+theend() {
+        echo $RESULT
+        exit $EXIT_STATUS
+}
+
+
+#
+## END FUNCTIONS
+#
+
+#############################################
+#
+## MAIN
+#
+
+
+# Handle command line options
+doopts $@
+
+# Do the do
+OUTPUT=$($LYNX -dump $STATUSURL | $GREP '<pre>.*</pre>')
+
+SLOTSTOTAL=$(/usr/bin/lynx -dump http://10.12.16.69:80/server-status | grep -v "^ " | grep -v "^$" | wc -c)
+
+SLOTSLLIURES=$(/usr/bin/lynx -dump http://10.12.16.69:80/server-status | grep -v "^ " | grep -v "^$" | sed 's/[^\.]//ig' | wc -c)
+
+#xapuza arreglo tema de intros
+
+INTROS=$(/usr/bin/lynx -dump http://10.12.16.69:80/server-status | grep -v "^ " | grep -v "^$" | wc -l)
+SLOTSTOTAL=$(echo $SLOTSTOTAL-$INTROS | bc)
+SLOTSLLIURES=$(echo $SLOTSLLIURES-$INTROS | bc)
+
+SLOTSUSATS=$(echo $SLOTSTOTAL-$SLOTSLLIURES | bc)
+
+PERCENTUS=$(echo $SLOTSUSATS/$SLOTSTOTAL | bc -l)
+RAWPERCENTUS=$(echo $SLOTSUSATS/$SLOTSTOTAL | bc -l | sed 's/^\./0\./ig')
+
+
+PERCENTUS=$(echo $PERCENTUS*100 | bc)
+PERCENTUS=$(echo $PERCENTUS | sed 's/^\./0\./ig')
+PERCENTUS=$(echo $PERCENTUS | sed 's/\..*$//ig')
+
+if test -z "$PERCENTUS" ; then
+        RESULT="$CHECKNAME WARNING - query returned no output!"
+        EXIT_STATUS=$STATE_WARNING
+else
+        if test "$PERCENTUS" -lt "$LEVEL_WARN" ; then
+                RESULT="$CHECKNAME OK - $PERCENTUS% used slots|percentusedslots=$RAWPERCENTUS"
+                EXIT_STATUS=$STATE_OK
+        else
+                if test "$PERCENTUS" -gt "$LEVEL_CRIT" ; then
+                        RESULT="$CHECKNAME CRITICAL - $PERCENTUS% used slots|percentusedslots=$RAWPERCENTUS"
+                        EXIT_STATUS=$STATE_CRITICAL
+                else
+                        if test "$PERCENTUS" -gt "$LEVEL_WARN" ; then
+                                RESULT="$CHECKNAME WARNING - $PERCENTUS% used slots|percentusedslots=$RAWPERCENTUS"
+                                EXIT_STATUS=$STATE_WARNING
+                        fi
+                fi
+        fi
+fi
+
+# Quit and return information and exit status
+theend
+
+
