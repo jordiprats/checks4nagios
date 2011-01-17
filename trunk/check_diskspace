@@ -1,0 +1,47 @@
+#!/bin/bash
+
+#set -xv
+
+while getopts 'v:w:c:' OPTION
+do
+  case $OPTION in
+  w)    wflag=1
+        wval="$OPTARG"
+        ;;
+  c)    cflag=1
+        cval="$OPTARG"
+        ;;
+  v)    vflag=1
+        POINT="$OPTARG"
+        ;;
+  ?)    echo Argument invalid
+        printusage
+        exit 3
+        ;;
+  esac
+done
+
+
+USED=$(df -P $POINT | tail -n1 | awk '{ print $3 }')
+AVAILABLE=$(df -P $POINT | tail -n1 | awk '{ print $4 }')
+USEDP=$(df -P $POINT | tail -n1 | awk '{ print $5 }' | sed 's/%//ig')
+
+STATUS="$POINT $USEDP% used| used=$USED; available=$AVAILABLE;"
+
+if [ -z "$USEDP" ];
+then
+	echo "UNKNOWN"
+	exit 3;
+elif [ $USEDP -ge $cval ];
+then
+	echo CRITICAL - $STATUS
+	exit 2
+elif [ $USEDP -ge $wval ];
+then
+	echo WARNING - $STATUS
+	exit 1
+else
+	echo OK - $STATUS
+	exit 0
+fi
+
