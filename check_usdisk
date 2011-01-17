@@ -1,0 +1,15 @@
+#!/bin/bash
+
+USDISK=$(iostat -dkx 5 3 | grep $1 | tail -n1 | awk '{ print $NF }')
+
+if [ -z "$USDISK" ];
+then
+	echo "UNKNOWN  - ERROR"
+	exit 3
+fi
+
+
+echo "Us disk $1: ${USDISK}|usdisk=$USDISK"
+exit 0
+
+
