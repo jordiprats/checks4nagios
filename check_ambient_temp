@@ -1,0 +1,55 @@
+#!/bin/bash
+
+TEMPWARNING="35"
+TEMPCRITICAL="40"
+
+while getopts 'w:c:h' OPT; 
+do
+	case $OPT in
+		w)  TEMPWARNING=$OPTARG
+		;;
+		c)  TEMPCRITICAL=$OPTARG
+		;;
+		h)  JELP="yes"
+		;;
+		[?])  WTF="yes"
+		;;
+	esac
+done
+
+if [ -n "$WTF" ];
+then
+	echo WTF?
+	exit 3;
+fi
+
+if [ -n "$JELP" ];
+then
+	echo $0 [-w WARNING] [-c CRITICAL]
+	exit 3;
+fi
+
+
+TEMPERATURA=$(/usr/bin/ipmitool sdr type Temperature | grep "Ambient Temp" |awk '{ print $10 }' | grep -v  "na" | sed 's/\..*//g' | head -n1)
+
+
+if [ -z "$TEMPERATURA"  ];
+then
+	echo UNKNOWN 
+	exit 3
+fi
+
+if   [ $TEMPERATURA -ge $TEMPCRITICAL ];
+then
+	echo "CRITICAL temperatura ${TEMPERATURA}C |temp=$TEMPERATURA;"
+	exit 2
+elif [ $TEMPERATURA -ge $TEMPWARNING  ];
+then
+	echo "WARNING temperatura ${TEMPERATURA}C |temp=$TEMPERATURA;"
+	exit 1
+fi
+
+
+echo "OK temperatura ${TEMPERATURA}C |temp=$TEMPERATURA;"
+exit 0
+
