@@ -1,18 +1,19 @@
 #!/bin/sh
+set -xv
 
 ###############################################
 #
 # Nagios script to check the number of concurrent requests being processed by Apache
 #
 # NOTE: You may need to tweak your apache config to allow "apachectl fullstatus" to 
-#       return information to the 10.12.16.69 or <hostname> for the server you are running this on
+#       return information to the 10.12.50.82 or <hostname> for the server you are running this on
 #
 # e.g.
 #	<Location /server-status>
 #		SetHandler server-status
 #		Order deny,allow
 #		Deny from all
-#		Allow from 10.12.16.69 <hostname> ...
+#		Allow from 10.12.50.82 <hostname> ...
 #	</Location>
 # 
 # Also requires lynx (or links change variable at top of script)
@@ -34,7 +35,7 @@ LYNX=/usr/bin/lynx
 AWK=/bin/awk
 GREP=/bin/grep
 
-STATUSURL="http://10.12.16.69:80/server-status"
+STATUSURL="http://$(ifconfig $(netstat -rn  | grep "^0.0.0.0" | awk '{ print $NF }') | grep "inet addr" | awk '{ print $2 }' | sed 's/addr://'):80/server-status"
 
 FLAG_VERBOSE=FALSE
 LEVEL_WARN=""
@@ -133,7 +134,6 @@ fi
 
 # Quit and return information and exit status
 theend
-
 
 
 
