@@ -4,14 +4,14 @@
 # Nagios script to check the number of concurrent requests being processed by Apache
 #
 # NOTE: You may need to tweak your apache config to allow "apachectl fullstatus" to
-#       return information to the 10.12.16.69 or <hostname> for the server you are running this on
+#       return information to the 10.12.50.82 or <hostname> for the server you are running this on
 #
 # e.g.
 #       <Location /server-status>
 #               SetHandler server-status
 #               Order deny,allow
 #               Deny from all
-#               Allow from 10.12.16.69 <hostname> ...
+#               Allow from 10.12.50.82 <hostname> ...
 #       </Location>
 #
 # Also requires lynx (or links change variable at top of script)
@@ -22,6 +22,7 @@
 #
 ###############################################
 
+set -xv
 
 ./utils.sh
 
@@ -40,7 +41,7 @@ LYNX=/usr/bin/lynx
 AWK=/bin/awk
 GREP=/bin/grep
 
-STATUSURL="http://10.12.16.69:80/server-status"
+STATUSURL="http://$(ifconfig $(netstat -rn  | grep "^0.0.0.0" | awk '{ print $NF }') | grep "inet addr" | awk '{ print $2 }' | sed 's/addr://'):80/server-status"
 
 FLAG_VERBOSE=FALSE
 LEVEL_WARN=""
@@ -117,13 +118,13 @@ doopts $@
 # Do the do
 OUTPUT=$($LYNX -dump $STATUSURL | $GREP '<pre>.*</pre>')
 
-SLOTSTOTAL=$(/usr/bin/lynx -dump http://10.12.16.69:80/server-status | grep -v "^ " | grep -v "^$" | wc -c)
+SLOTSTOTAL=$(/usr/bin/lynx -dump http://$(ifconfig $(netstat -rn  | grep "^0.0.0.0" | awk '{ print $NF }') | grep "inet addr" | awk '{ print $2 }' | sed 's/addr://'):80/server-status | grep -v "^ " | grep -v "^$" | wc -c)
 
-SLOTSLLIURES=$(/usr/bin/lynx -dump http://10.12.16.69:80/server-status | grep -v "^ " | grep -v "^$" | sed 's/[^\.]//ig' | wc -c)
+SLOTSLLIURES=$(/usr/bin/lynx -dump http://$(ifconfig $(netstat -rn  | grep "^0.0.0.0" | awk '{ print $NF }') | grep "inet addr" | awk '{ print $2 }' | sed 's/addr://'):80/server-status | grep -v "^ " | grep -v "^$" | sed 's/[^\.]//ig' | wc -c)
 
 #xapuza arreglo tema de intros
 
-INTROS=$(/usr/bin/lynx -dump http://10.12.16.69:80/server-status | grep -v "^ " | grep -v "^$" | wc -l)
+INTROS=$(/usr/bin/lynx -dump http://$(ifconfig $(netstat -rn  | grep "^0.0.0.0" | awk '{ print $NF }') | grep "inet addr" | awk '{ print $2 }' | sed 's/addr://'):80/server-status | grep -v "^ " | grep -v "^$" | wc -l)
 SLOTSTOTAL=$(echo $SLOTSTOTAL-$INTROS | bc)
 SLOTSLLIURES=$(echo $SLOTSLLIURES-$INTROS | bc)
 
@@ -159,5 +160,4 @@ fi
 
 # Quit and return information and exit status
 theend
-
 
