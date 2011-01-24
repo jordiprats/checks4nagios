@@ -1,0 +1,35 @@
+#!/bin/bash
+
+CPUIDLE=$(/usr/bin/top n 2 d 2 b -p 1 | grep -i "cpu(s)" | tail -1 | cut -d "%" -f 4 | cut -d "," -f 2 | cut -d " " -f 2)
+
+CPUUSAGE=$(echo 100-$CPUIDLE | bc -l | sed 's/^\./0\./g' | sed 's/\..*//ig')
+DISPCPUUSAGE=$(echo 100-$CPUIDLE | bc -l | sed 's/^\./0\./g')
+
+while getopts 'u:p:v:w:c:' OPTION
+do
+  case $OPTION in
+  w)    wflag=1
+        wval="$OPTARG"
+        ;;
+  c)    cflag=1
+        cval="$OPTARG"
+        ;;
+  ?)    echo Argument invalid
+        printusage
+        exit 3
+        ;;
+  esac
+done
+
+if [ $CPUUSAGE -gt $cval ];
+then
+echo "CRITICAL - CPU usage: $DISPCPUUSAGE%|cpuusage=$DISPCPUUSAGE"
+exit 2
+elif [ $CPUUSAGE -gt $wval ];
+then
+echo "WARNING - CPU usage: $DISPCPUUSAGE%|cpuusage=$DISPCPUUSAGE"
+exit 1
+fi
+
+echo "OK - CPU usage: $DISPCPUUSAGE%|cpuusage=$DISPCPUUSAGE"
+
