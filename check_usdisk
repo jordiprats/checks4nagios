@@ -1,6 +1,19 @@
 #!/bin/bash
 
-USDISK=$(iostat -dkx 5 3 | grep $1 | tail -n1 | awk '{ print $NF }')
+IOSTATTEMP=$(mktemp /tmp/usdisk.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX)
+
+iostat -dkx 5 3 > $IOSTATTEMP
+
+cat /proc/partitions | grep $1 2>&1 >/dev/null
+
+if [ $? -eq 0 ];
+then
+	DISPOSITIU=$1
+else
+	DISPOSITIU=$(ls -la $(df -P $1 | tail -n1 | awk '{ print $1 }') | awk '{ if ($5 == "253,") { printf "dm-%d",$6 } else { print $NF } }' | awk -F / '{ print $NF }')
+fi
+
+USDISK=$(cat $IOSTATTEMP | grep $DISPOSITIU | tail -n1 | awk '{ print $NF }')
 
 if [ -z "$USDISK" ];
 then
@@ -8,8 +21,8 @@ then
 	exit 3
 fi
 
+rm $IOSTATTEMP
 
 echo "Us disk $1: ${USDISK}|usdisk=$USDISK"
 exit 0
-
 
