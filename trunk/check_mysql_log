@@ -14,6 +14,11 @@ fi
 
 case $LASTLINE in
 
+*'lost+found'*)
+        echo "OK - lost+found trobat"
+        exit 0
+        ;;
+
 *'ready for connections'*)
         echo "OK - MySQL ready :)"
         exit 0
