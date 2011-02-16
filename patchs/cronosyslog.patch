@@ -1,11 +1,10 @@
 diff -Naur cronolog-1.6.2/src/cronolog.c cronolog-1.6.2.syslog/src/cronolog.c
 --- cronolog-1.6.2/src/cronolog.c	2001-05-03 18:42:48.000000000 +0200
-+++ cronolog-1.6.2.syslog/src/cronolog.c	2011-02-15 13:42:16.000000000 +0100
-@@ -84,7 +84,13 @@
++++ cronolog-1.6.2.syslog/src/cronolog.c	2011-02-16 10:29:37.000000000 +0100
+@@ -84,6 +84,13 @@
  
  #include "cronoutils.h"
  #include "getopt.h"
--
 +#include <stdio.h>
 +#include <sys/socket.h>
 +#include <arpa/inet.h>
@@ -14,17 +13,17 @@ diff -Naur cronolog-1.6.2/src/cronolog.c cronolog-1.6.2.syslog/src/cronolog.c
 +#include <unistd.h>
 +#include <netinet/in.h>
  
- /* Forward function declaration */
  
-@@ -106,6 +112,7 @@
+ /* Forward function declaration */
+@@ -106,6 +113,7 @@
  			"   -H NAME,   --hardlink=NAME maintain a hard link from NAME to current log\n" \
  			"   -S NAME,   --symlink=NAME  maintain a symbolic link from NAME to current log\n" \
  			"   -P NAME,   --prev-symlink=NAME  maintain a symbolic link from NAME to previous log\n" \
-+			"   -R NAME,   --remote-syslog=NAME    syslog server\n" \
++                        "   -R NAME,   --remote-syslog=NAME    syslog server\n" \
  			"   -l NAME,   --link=NAME     same as -S/--symlink\n" \
  			"   -h,        --help          print this help, then exit\n" \
  			"   -p PERIOD, --period=PERIOD set the rotation period explicitly\n" \
-@@ -122,7 +129,7 @@
+@@ -122,7 +130,7 @@
  
  /* Definition of the short and long program options */
  
@@ -33,7 +32,7 @@ diff -Naur cronolog-1.6.2/src/cronolog.c cronolog-1.6.2.syslog/src/cronolog.c
  
  #ifndef _WIN32
  struct option long_options[] =
-@@ -134,6 +141,7 @@
+@@ -134,6 +142,7 @@
      { "hardlink",  	required_argument, 	NULL, 'H' },
      { "symlink",   	required_argument, 	NULL, 'S' },
      { "prev-symlink",  	required_argument, 	NULL, 'P' },
@@ -41,61 +40,54 @@ diff -Naur cronolog-1.6.2/src/cronolog.c cronolog-1.6.2.syslog/src/cronolog.c
      { "link",      	required_argument, 	NULL, 'l' },
      { "period",		required_argument,	NULL, 'p' },
      { "delay",		required_argument,	NULL, 'd' },
-@@ -167,6 +175,8 @@
+@@ -167,6 +176,9 @@
      time_t	time_offset = 0;
      time_t	next_period = 0;
      int 	log_fd = -1;
-+    int     	sock=-1;
++    int        sock=-1;
 +    struct sockaddr_in syslogsrv;
++
  
  #ifndef _WIN32
      while ((ch = getopt_long(argc, argv, short_options, long_options, NULL)) != EOF)
-@@ -214,7 +224,20 @@
- 	    }
- 	    prevlinkname = optarg;
+@@ -216,6 +228,20 @@
  	    break;
--	    
-+	   
-+   	case 'R':
-+       	sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-+       	if(sock< 0)
-+       	{
-+           	fprintf(stderr,"Failed to create socket\n");
-+           	exit(1);
-+       	}
-+        
-+       	memset(&syslogsrv,0,sizeof(syslogsrv));
-+        syslogsrv.sin_family = AF_INET;
-+        syslogsrv.sin_addr.s_addr = inet_addr(optarg);
-+        syslogsrv.sin_port = htons(514);
-+        break; 
+ 	    
  
++       case 'R':
++            sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
++            if(sock< 0)
++            {
++            	fprintf(stderr,"Failed to create socket\n");
++            	exit(1);
++            }
++        
++            memset(&syslogsrv,0,sizeof(syslogsrv));
++	    syslogsrv.sin_family = AF_INET;
++	    syslogsrv.sin_addr.s_addr = inet_addr(optarg);
++	    syslogsrv.sin_port = htons(514);
++	    break; 
++
  	case 'd':
  	    period_delay_units = parse_timespec(optarg, &period_delay);
-@@ -359,12 +382,23 @@
+ 	    break;
+@@ -359,6 +385,18 @@
  	    perror(filename);
  	    exit(5);
  	}
 +
-+    /* syslog */
-+    if(sock >= 0)
-+    {
-+        if(sendto(sock, read_buf, n_bytes_read, 0,
++    	/* syslog */
++        if(sock >= 0)
++    	{
++        	if(sendto(sock, read_buf, n_bytes_read, 0,
 +                         (struct sockaddr *) &syslogsrv,
 +                         sizeof(syslogsrv)
-+            ) == -1)
-+            fprintf(stderr,"Error sendto()\n");
-+    }
++            		) == -1)
++            	fprintf(stderr,"Error sendto()\n");
++    	}
++
 +
      }
  
      /* NOTREACHED */
-     return 1;
- }
--
-
-+
- /* Open a new log file: determine the start of the current
-  * period, generate the log file name from the template,
-  * determine the end of the period and open the new log file.
 
