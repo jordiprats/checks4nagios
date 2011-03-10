@@ -64,7 +64,10 @@ else
 	done
 fi
 
-(echo "rules:"; echo "http://www.maatkit.org/doc/mk-query-advisor.html#rules"; echo ""; /usr/local/bin/mk-query-advisor $OLDLOG) | mail -s "query advisor [$(date +%Y%m%d)]" $ADVISOR_MAIL
+if [ -n "$ADVISOR_MAIL" ];
+then 
+	(echo "rules:"; echo "http://www.maatkit.org/doc/mk-query-advisor.html#rules"; echo ""; /usr/local/bin/mk-query-advisor $OLDLOG) | mail -s "query advisor [$(date +%Y%m%d)]" $ADVISOR_MAIL
+fi
 
 LOGNAME=$(echo "show variables like 'log_error';" | /usr/local/mysql/bin/mysql -u root -p$(cat /var/mysql/.mysql.root.pass) -N | tail -n1 | awk '{ print $NF }')
 
