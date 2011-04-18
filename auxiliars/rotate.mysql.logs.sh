@@ -45,6 +45,8 @@ do
 				then
 					MAILTO_SLOWS=$DEFAULT_MYSQL_MAIL
 				fi
+				
+				MAILTO_SLOWS=$(echo $MAILTO_SLOWS | sed "s/'//g")				
 	
 				# procesa slowqueries
 				/usr/local/bin/mk-query-digest --filter  '($event->{user} || "") =~ m/'$i'/' $OLDLOG | mail -s "slow queries $i [$(date +%Y%m%d)]" $MAILTO_SLOWS
