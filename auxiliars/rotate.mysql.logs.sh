@@ -38,7 +38,7 @@ do
 				#mailto?
 				USERMYSQLVAR=${e%%=*}
 				USERNUMVAR=${USERMYSQLVAR##*_}
-				MAILTO_SLOWS=$(set | grep MAIL_MYSQL_$MAILVAR)
+				MAILTO_SLOWS=$(set | grep MAIL_MYSQL_$USERNUMVAR)
 				MAILTO_SLOWS=${MAILTO_SLOWS##*=}
 	
 				if [ -z "$MAILTO_SLOWS" ];
