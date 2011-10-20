@@ -107,7 +107,7 @@ $cont = 0;
 $output = "";
 
 # Here is te magic!!!
-@cpus_idle = `mpstat -P ALL $opt_i $opt_r  | grep -v all | grep -v CPU  | grep Average| awk '{print \$10}'`;
+@cpus_idle = `mpstat -P ALL $opt_i $opt_r  | grep -v all | grep -v CPU  | grep Average| awk '{print \$NF}'`;
 
 $cpu = 0;
 
