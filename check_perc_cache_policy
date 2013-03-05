@@ -1,0 +1,104 @@
+#!/usr/bin/perl
+
+package ldmegacli;
+
+sub new {
+    my $class = shift;
+    my $self  = { 
+	ad => shift,
+	vd => shift,
+	dp => shift,
+	cp => shift
+	};
+	
+    return bless $self, $class;
+}
+
+sub getAdapterNo {
+	my( $self ) = @_;
+	return $self->{ad};
+}
+
+sub getVDNo {
+        my( $self ) = @_;
+        return $self->{vd};
+}
+
+sub getDefaultCachePolicy {
+	my( $self ) = @_;
+	return $self->{dp};
+}
+
+sub getCurrentCachePolicy {
+	my( $self ) = @_;
+        return $self->{cp};
+}
+
+package main;
+
+my @lds;
+
+my $tmpad;
+my $tmpvd;
+my $tmpdp;
+my $tmpcp;
+my $countfields=0;
+
+open (MEGACLI, "/opt/MegaRAID/MegaCli/MegaCli -LDInfo -LAll -aAll |");
+while (<MEGACLI>){
+	my $line=$_;
+	#Adapter 0 -- Virtual Drive Information:
+	if($line =~ m/^Adapter (\d+) /)
+	{
+		$tmpad=$1;
+		$countfields=1;
+	}
+	#Virtual Disk: 0 (target id: 0)
+	if($line =~ m/^Virtual Disk: (\d+) /)
+	{
+		$tmpvd=$1;
+		$countfields++;
+	}
+	#Default Cache Policy: WriteBack, ReadAheadNone, Direct, No Write Cache if Bad BBU
+	if($line =~ m/^Default Cache Policy: (\w+)/)
+	{
+		$tmpdp=$1;
+		$countfields++;
+	}
+	#Current Cache Policy: WriteThrough, ReadAheadNone, Direct, No Write Cache if Bad BBU
+	if(($countfields==3)&&($line =~ m/^Current Cache Policy: (\w+)/))
+	{
+		push(@lds,new ldmegacli($tmpad,$tmpvd,$tmpdp,$1));
+		$countfields=1;
+	}
+		
+}
+close MEGACLI;
+
+my $totallds=@lds;
+
+if($totallds==0)
+{
+	print "CRITICAL - No VirtualDisk found\n";
+	exit 3;
+}
+
+my $exitcode=0;
+
+foreach $ld (@lds) {
+	if($ld->getDefaultCachePolicy() ne $ld->getCurrentCachePolicy())
+	{
+		print "CRITICAL - " if($exitcode==0);
+		print "Adapter ".$ld->getAdapterNo()." VD ".$ld->getVDNo()." has set the default cache policy as ".$ld->getDefaultCachePolicy().", but its current policy is ".$ld->getCurrentCachePolicy();
+		$exitcode=3;
+	}	
+}
+
+if ($exitcode!= 3)
+{
+	print "OK - Default cache policy and current policy matches";
+}
+
+print "\n";
+exit $exitcode;
+
