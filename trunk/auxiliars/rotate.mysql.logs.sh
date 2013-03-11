@@ -1,5 +1,32 @@
 #!/bin/bash
 
+if [ ! -f /usr/local/mysql/bin/mysql ];
+then
+	MYSQLBIN=$(find /usr/local/mysql /opt/ /usr/local/bin/ /usr/bin/ -type f -iname mysql 2>/dev/null | head -n1)
+else
+	MYSQLBIN=/usr/local/mysql/bin/mysql
+fi
+
+if [ -z "$MYSQLBIN" ];
+then
+	echo "no trobo binari client mysql"
+	exit 1
+fi
+
+if [ ! -f /usr/local/mysql/bin/mysqladmin ];
+then
+	MYSQLADMINBIN=$(find /usr/local/mysql /opt/ /usr/local/bin/ /usr/bin/ -type f -iname mysqladmin 2>/dev/null | head -n1)
+else
+	MYSQLADMINBIN=/usr/local/mysql/bin/mysqladmin
+fi
+
+if [ -z "$MYSQLADMINBIN" ];
+then
+	echo "no trobo binari mysqladmin"
+	exit 1
+fi
+
+
 if [ ! -f /etc/rotatemysql.conf ]
 then
 	echo falta config
@@ -14,7 +41,7 @@ then
 	exit 2
 fi
 
-LOGNAME=$(echo "show variables like 'slow_query_log_file';" | /usr/local/mysql/bin/mysql -u root -p$(cat /var/mysql/.mysql.root.pass) -N | tail -n1 | awk '{ print $NF }')
+LOGNAME=$(echo "show variables like 'slow_query_log_file';" | $MYSQLBIN -u root -p$(cat /var/mysql/.mysql.root.pass) -N | tail -n1 | awk '{ print $NF }')
 
 if [ -z "$LOGNAME" ];
 then
@@ -23,7 +50,7 @@ else
         mv $LOGNAME $(dirname ${LOGNAME})/$(basename $LOGNAME).$(date +%Y%m%d)
 fi
 
-/usr/local/mysql/bin/mysqladmin -u root -p$(cat /var/mysql/.mysql.root.pass) flush-logs
+$MYSQLADMINBIN -u root -p$(cat /var/mysql/.mysql.root.pass) flush-logs
 
 OLDLOG=$(dirname ${LOGNAME})/$(basename $LOGNAME).$(date +%Y%m%d)
 
@@ -71,7 +98,7 @@ then
 	(echo "rules:"; echo "http://www.maatkit.org/doc/mk-query-advisor.html#rules"; echo ""; /usr/local/bin/mk-query-advisor $OLDLOG) | mail -s "query advisor [$(date +%Y%m%d)]" $ADVISOR_MAIL
 fi
 
-LOGNAME=$(echo "show variables like 'log_error';" | /usr/local/mysql/bin/mysql -u root -p$(cat /var/mysql/.mysql.root.pass) -N | tail -n1 | awk '{ print $NF }')
+LOGNAME=$(echo "show variables like 'log_error';" | $MYSQLBIN -u root -p$(cat /var/mysql/.mysql.root.pass) -N | tail -n1 | awk '{ print $NF }')
 
 if [ -z "$LOGNAME" ];
 then
@@ -80,6 +107,6 @@ else
         mv $LOGNAME $(dirname ${LOGNAME})/$(basename $LOGNAME).$(date +%Y%m%d)
 fi
 
-/usr/local/mysql/bin/mysqladmin -u root -p$(cat /var/mysql/.mysql.root.pass) flush-logs
+$MYSQLADMINBIN -u root -p$(cat /var/mysql/.mysql.root.pass) flush-logs
 
-
+exit 0
