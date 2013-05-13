@@ -1,0 +1,148 @@
+diff -Naur cronolog-1.6.2/src/cronolog.c cronolog-1.6.2-syslog-onrotate/src/cronolog.c
+--- cronolog-1.6.2/src/cronolog.c	2001-05-03 18:42:48.000000000 +0200
++++ cronolog-1.6.2-syslog-onrotate/src/cronolog.c	2013-05-09 15:46:04.000000000 +0200
+@@ -84,7 +84,16 @@
+ 
+ #include "cronoutils.h"
+ #include "getopt.h"
+-
++#include <stdio.h>
++#include <sys/socket.h>
++#include <arpa/inet.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++#include <signal.h>
++#include <netinet/in.h>
++#include <sys/stat.h>
++#include <sys/types.h>
+ 
+ /* Forward function declaration */
+ 
+@@ -105,8 +114,10 @@
+ 			"\n" \
+ 			"   -H NAME,   --hardlink=NAME maintain a hard link from NAME to current log\n" \
+ 			"   -S NAME,   --symlink=NAME  maintain a symbolic link from NAME to current log\n" \
+-			"   -P NAME,   --prev-symlink=NAME  maintain a symbolic link from NAME to previous log\n" \
+ 			"   -l NAME,   --link=NAME     same as -S/--symlink\n" \
++			"   -P NAME,   --prev-symlink=NAME  maintain a symbolic link from NAME to previous log\n" \
++                        "   -R NAME,   --remote-syslog=NAME syslog server\n" \
++                        "   -F NAME,   --on-rotate=FILE     file to executo when it rotates\n" \
+ 			"   -h,        --help          print this help, then exit\n" \
+ 			"   -p PERIOD, --period=PERIOD set the rotation period explicitly\n" \
+ 			"   -d DELAY,  --delay=DELAY   set the rotation period delay\n" \
+@@ -122,7 +133,7 @@
+ 
+ /* Definition of the short and long program options */
+ 
+-char          *short_options = "ad:eop:s:z:H:P:S:l:hVx:";
++char          *short_options = "ad:eop:s:z:H:P:F:R:S:l:hVx:";
+ 
+ #ifndef _WIN32
+ struct option long_options[] =
+@@ -134,6 +145,8 @@
+     { "hardlink",  	required_argument, 	NULL, 'H' },
+     { "symlink",   	required_argument, 	NULL, 'S' },
+     { "prev-symlink",  	required_argument, 	NULL, 'P' },
++    { "remote-syslog",  required_argument,      NULL, 'R' },
++    { "on-rotate",      required_argument,      NULL, 'F' },
+     { "link",      	required_argument, 	NULL, 'l' },
+     { "period",		required_argument,	NULL, 'p' },
+     { "delay",		required_argument,	NULL, 'd' },
+@@ -156,6 +169,10 @@
+     char 	read_buf[BUFSIZE];
+     char 	tzbuf[BUFSIZE];
+     char	filename[MAX_PATH];
++    char	onrotateexec[MAX_PATH];
++    char	onrotatefile[MAX_PATH];
++    char	*onrotatept = "/proc/self/fd/%d";
++    char	onrotateprocfile[MAX_PATH];
+     char	*start_time = NULL;
+     char	*template;
+     char	*linkname = NULL;
+@@ -167,6 +184,11 @@
+     time_t	time_offset = 0;
+     time_t	next_period = 0;
+     int 	log_fd = -1;
++    int        sock=-1;
++    struct sockaddr_in syslogsrv;
++    struct stat fstat_onrotate;
++
++    onrotateexec[0]=0;
+ 
+ #ifndef _WIN32
+     while ((ch = getopt_long(argc, argv, short_options, long_options, NULL)) != EOF)
+@@ -214,7 +236,25 @@
+ 	    }
+ 	    prevlinkname = optarg;
+ 	    break;
+-	    
++
++       case 'F':
++	    strncpy(onrotateexec,optarg,MAX_PATH);	   
++ 
++	    break; 
++
++       case 'R':
++            sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
++            if(sock< 0)
++            {
++            	fprintf(stderr,"Failed to create socket\n");
++            	exit(1);
++            }
++        
++            memset(&syslogsrv,0,sizeof(syslogsrv));
++	    syslogsrv.sin_family = AF_INET;
++	    syslogsrv.sin_addr.s_addr = inet_addr(optarg);
++	    syslogsrv.sin_port = htons(514);
++	    break; 
+ 
+ 	case 'd':
+ 	    period_delay_units = parse_timespec(optarg, &period_delay);
+@@ -334,6 +374,27 @@
+ 	 */
+ 	if ((time_now >= next_period) && (log_fd >= 0))
+ 	{
++	    if(onrotateexec[0]!=0)
++	    {
++		if(fstat(log_fd, &fstat_onrotate) == 0)
++		{
++		    if(fstat_onrotate.st_nlink>0)
++		    {
++			snprintf(onrotateprocfile, MAX_PATH, onrotatept, log_fd);
++			if(readlink(onrotateprocfile, onrotatefile, MAX_PATH))
++			{
++			    DEBUG(("readlink(log_file)=%s\n", onrotatefile));
++			   
++			    signal(SIGCHLD, SIG_IGN);
++			    if(!fork())
++			    {
++				execl(onrotateexec, onrotateexec, onrotatefile, (char*)0 );
++			    }
++			}
++		    }
++		}
++	    }
++
+ 	    close(log_fd);
+ 	    log_fd = -1;
+ 	}
+@@ -359,6 +420,18 @@
+ 	    perror(filename);
+ 	    exit(5);
+ 	}
++
++    	/* syslog */
++        if(sock >= 0)
++    	{
++        	if(sendto(sock, read_buf, n_bytes_read, 0,
++                         (struct sockaddr *) &syslogsrv,
++                         sizeof(syslogsrv)
++            		) == -1)
++            	fprintf(stderr,"Error sendto()\n");
++    	}
++
++
+     }
+ 
+     /* NOTREACHED */
