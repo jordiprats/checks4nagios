@@ -1,0 +1,72 @@
+#!/bin/bash
+
+PERF=""
+STATUS="OK" 
+RET=0
+
+if [ -z "$(/usr/sbin/lvdisplay 2>/dev/null | /bin/grep "LV Name" | /bin/grep snap)" ];
+then
+	if [ -n "$(echo "show processlist;" | mysql -uroot -plp9lIMak | grep -i optimize)" ];
+	then
+        	echo "OK - OPTIMIZE in progress"
+        	exit 0
+	else
+
+		/data/scripts/mksnap.sh
+
+		if [ -z "$(/usr/sbin/lvdisplay 2>/dev/null | /bin/grep "LV Name" | /bin/grep snap)" ];
+		then
+			echo "CRITCAL - No s'han trobat snapshots"
+			exit 2
+		fi
+	fi
+fi
+
+for i in $(/usr/sbin/lvdisplay 2>/dev/null | /bin/grep "LV Name" | /bin/grep snap | /bin/awk '{ print $3 }');
+do
+	PERF="id$(echo $i | cut -d '.' -f 2)=$(/usr/sbin/lvdisplay $i 2>/dev/null | /bin/grep "Allocated to snapshot" | /bin/awk '{ print $4 }' | /bin/sed 's/%//ig'); $PERF"
+
+	if [ $(/usr/sbin/lvdisplay $i 2>/dev/null | /bin/grep "Allocated to snapshot" | /bin/awk '{ print $4 }' | /bin/sed 's/%//ig' | /bin/sed 's/\..*//ig' ) -gt 90 ];
+	then
+		# CRITICAL
+		
+		STATUS="CRITICAL"
+		RET=2
+			
+		/usr/sbin/lvdisplay 2>/dev/null | mail sistemas@grupointercom.com -s "$0::Snapshots sparrow -- delete"
+		
+		IDSNAP=$(basename $i)
+		
+		MOUNTPOINT=$(mount | grep $IDSNAP | sed 's/^.*on //' | awk '{ print $1 }')
+			
+		if [ -n "${MOUNTPOINT}" ];
+		then
+			umount $MOUNTPOINT
+
+			MOUNTPOINT=$(mount | grep $IDSNAP | sed 's/^.*on //' | awk '{ print $1 }')
+
+			if [ -n "${MOUNTPOINT}" ];
+			then
+				kill $(lsof  $MOUNTPOINT | awk '{ print $2 }' | grep -v PID)
+				sleep 5
+				kill -9 $(lsof  $MOUNTPOINT | awk '{ print $2 }' | grep -v PID)
+				sleep 5
+			fi
+		fi
+	
+		/usr/sbin/lvremove -f $i
+
+	elif [ $(/usr/sbin/lvdisplay $i 2>/dev/null | /bin/grep "Allocated to snapshot" | /bin/awk '{ print $4 }' | /bin/sed 's/%//ig' | /bin/sed 's/\..*//ig' ) -gt 70 ];
+	then
+		#WARNING
+		
+		STATUS="WARNING"
+		RET=1
+		
+	fi
+	
+done
+
+echo "$STATUS - $PERF|$PERF"
+exit $RET
+
