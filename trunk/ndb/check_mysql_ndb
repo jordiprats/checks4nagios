@@ -1,0 +1,37 @@
+#!/bin/bash
+
+CONNECTSTRING="10.12.66.11:1186,10.12.66.14:1186"
+
+if [ -z "$1" ];
+then
+	echo YOU FAIL
+	exit 2
+fi
+
+
+IDNODE=$(/opt/mysql-cluster/bin/ndb_mgm -c ${CONNECTSTRING} -e 'show' | grep $1 |tail -n1| awk '{ print $1 }' | cut -f2 -d= )
+
+if [ -z "$IDNODE" ];
+then
+	echo FUCK FUCK FUCK
+	exit 2
+fi
+
+NODESTATUS=$(/opt/mysql-cluster/bin/ndb_mgm -c ${CONNECTSTRING} -e "$IDNODE status" | grep "^Node" | awk '{ print $3 }')
+
+if [ -z "$NODESTATUS" ]
+then
+	echo FUCK FUCK FUCK
+	exit 2
+fi
+
+if [ $NODESTATUS == "connected" ];
+then
+	echo "OK - mysql ndb $IDNODE"
+	exit 0
+else
+	echo "CRITICAL - ndb not connected"
+	exit 2
+fi
+
+

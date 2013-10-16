@@ -1,0 +1,19 @@
+#!/bin/bash
+
+if [ -z "$1" ];
+then
+	echo "on es el de mgm?"
+	exit 1
+fi
+
+/opt/mysql-cluster/bin/ndb_mgm -e show -c $1 | grep ndb >/dev/null
+
+if [ $? -eq 0 ];
+then
+	echo OK - $1
+	exit 0
+fi
+
+echo "No puc conectar al ndbmgmd"
+exit 2
+
