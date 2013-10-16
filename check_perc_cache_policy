@@ -79,7 +79,7 @@ my $totallds=@lds;
 
 if($totallds==0)
 {
-	print "CRITICAL - No VirtualDisk found\n";
+	print "UNKNOWN - No VirtualDisk found\n";
 	exit 3;
 }
 
@@ -90,7 +90,7 @@ foreach $ld (@lds) {
 	{
 		print "CRITICAL - " if($exitcode==0);
 		print "Adapter ".$ld->getAdapterNo()." VD ".$ld->getVDNo()." has set the default cache policy as ".$ld->getDefaultCachePolicy().", but its current policy is ".$ld->getCurrentCachePolicy();
-		$exitcode=3;
+		$exitcode=2;
 	}	
 }
 
