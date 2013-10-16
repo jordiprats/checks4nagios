@@ -1,0 +1,69 @@
+#!/bin/bash
+
+CONNECTSTRING="10.12.66.11:1186,10.12.66.14:1186"
+
+NODEID=$1
+
+if [ -z "$1" ];
+then
+	echo WTF
+	exit 2
+fi
+
+NODESTAT=$(/opt/mysql-cluster/bin/ndb_mgm -c ${CONNECTSTRING} -e "$NODEID status" | grep Node | head -n1 | awk '{ print $3 }')
+
+MASTERNODE=$(/opt/mysql-cluster/bin/ndb_mgm -c ${CONNECTSTRING} -e 'show' | grep ndb_mgmd -A1 | grep ^id | head -n1 | cut -f2 -d@ | awk '{ print $1 }')
+
+if [ -z "$MASTERNODE" ];
+then
+	echo "MASTER NODE FAILURE - your penis is too small"
+	exit 2
+fi
+
+
+if [ $NODESTAT != "started" ]
+then
+
+	echo -n "/$NODESTAT/ "
+	#que fem aqui?
+	if [ $NODESTAT == "starting" ]
+	then
+		NODEPHASE=$(/opt/mysql-cluster/bin/ndb_mgm -c ${CONNECTSTRING} -e "$NODEID status" | grep Node | head -n1 | awk '{ print $7 }' | sed 's/)//g')
+		
+		echo -n '8'; for i in $(seq 1 $NODEPHASE); do echo -n '/'; done; echo -n D;
+		echo " - phase = $NODEPHASE"
+		
+		if [ $NODEPHASE -eq 100 ]
+		then
+			echo "aqui hauriem de reiniciar el mysqld si persisteix"
+		fi	
+		
+	else
+		#aqui startegem el node?
+		#quina ip?
+		#id=11 (not connected, accepting connect from 192.168.121.86)
+
+		/opt/mysql-cluster/bin/ndb_mgm -c ${CONNECTSTRING} -e "$NODEID status" | grep Node | head -n1
+		
+		echo 'enlarging your penis'
+		
+		NODEIP=$(/opt/mysql-cluster/bin/ndb_mgm -c ${CONNECTSTRING} -e 'show' | grep "^id=$NODEID" | awk '{ print $7 }' | sed 's/)//g')
+		
+	
+		#[root@ip-192-168-121-44 ~]# ssh -i ~/.ssh/mycluster-teaming.pem 192.168.121.86
+		#Last login: Wed Nov 16 07:42:51 2011 from 192.168.121.44
+		#[root@ip-192-168-121-86 ~]# su - mysql -c '/opt/mysql-cluster/bin/ndbmtd -c 192.168.121.44:1186'
+
+		ssh -i ~/.ssh/id_dsa $NODEIP "su - mysql -c '/opt/mysql-cluster/bin/ndbmtd -c ${CONNECTSTRING}'"
+		
+	fi
+	
+	#WARNING
+	exit 1
+
+fi
+
+echo "OK - $(/opt/mysql-cluster/bin/ndb_mgm -c ${CONNECTSTRING} -e "$NODEID status" | grep Node | head -n1)"
+#OK
+exit 0
+
