@@ -1,0 +1,23 @@
+#!/bin/bash
+#11 report memoryusage
+
+LEVELWARN=70
+
+if [ -z "$1" ];
+then
+	echo "QUIN NODE?"
+	exit 2
+fi
+
+DATAUSAGE=$(/opt/mysql-cluster/bin/ndb_mgm -e "$1 report memoryusage" | grep "^Node" | sed -e 's/([^)]*)//g' -e 's/%//g' | grep Data | awk '{ print $NF }')
+INDEXUSAGE=$(/opt/mysql-cluster/bin/ndb_mgm -e "$1 report memoryusage" | grep "^Node" | sed -e 's/([^)]*)//g' -e 's/%//g' | grep Index | awk '{ print $NF }')
+
+if [ $DATAUSAGE -ge $LEVELWARN ] || [ $INDEXUSAGE -ge $LEVELWARN ] ;
+then
+	echo "WARNING - Data usage: $DATAUSAGE% Index usage: $INDEXUSAGE | datausage=$DATAUSAGE; indexusage=$INDEXUSAGE;"
+	exit 1
+else
+	echo "OK - Data usage: $DATAUSAGE% Index usage: $INDEXUSAGE | datausage=$DATAUSAGE; indexusage=$INDEXUSAGE;"
+fi
+
+
