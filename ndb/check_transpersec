@@ -1,0 +1,33 @@
+#!/bin/bash
+
+#Ndb_api_trans_
+
+STATUS=$(echo "show status like 'Ndb_api_trans_%_count';" | /opt/mysql-cluster/bin/mysql -p$(cat /var/mysql/.mysql.root.pass) -N)
+
+if [ -z "$STATUS" ];
+then
+	echo "CRITICAL - status buit"
+	exit 2
+fi
+
+#
+#Ndb_api_trans_start_count	1437
+#Ndb_api_trans_commit_count	971
+#Ndb_api_trans_abort_count	2
+#Ndb_api_trans_close_count	1400
+#Ndb_api_trans_local_read_row_count	1578
+#
+
+STARTED=$(echo "show status like 'Ndb_api_trans_%_count';" | /opt/mysql-cluster/bin/mysql -p$(cat /var/mysql/.mysql.root.pass) -N | grep Ndb_api_trans_start_count | awk '{ print $NF }')
+COMMITED=$(echo "show status like 'Ndb_api_trans_%_count';" | /opt/mysql-cluster/bin/mysql -p$(cat /var/mysql/.mysql.root.pass) -N | grep Ndb_api_trans_commit_count | awk '{ print $NF }')
+ABORTED=$(echo "show status like 'Ndb_api_trans_%_count';" | /opt/mysql-cluster/bin/mysql -p$(cat /var/mysql/.mysql.root.pass) -N | grep Ndb_api_trans_abort_count | awk '{ print $NF }')
+CLOSED=$(echo "show status like 'Ndb_api_trans_%_count';" | /opt/mysql-cluster/bin/mysql -p$(cat /var/mysql/.mysql.root.pass) -N | grep Ndb_api_trans_close_count | awk '{ print $NF }')
+
+if [ -z "$STARTED" -o -z "$COMMITED" -o -z "$ABORTED" -o -z "$CLOSED" ];
+then
+	echo "CRITICAL - error obtenint les dades"
+	exit 2
+fi
+
+echo "OK - mysql threads started:$STARTED commited: $COMMITED aborted: $ABORTED closed: $CLOSED | started=$STARTED; commited=$COMMITED; aborted=$ABORTED; closed=$CLOSED;"
+
