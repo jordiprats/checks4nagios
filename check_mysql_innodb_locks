@@ -97,7 +97,7 @@ fi
 
 
 # Different grep versions support different options
-echo a | grep -Pz a 2> /dev/null
+echo a | grep -Pz a > /dev/null 2>&1
 RETORN=$?
 
 if [ $RETORN -eq 0 ]; then
