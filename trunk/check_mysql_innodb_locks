@@ -119,7 +119,7 @@ if [ $LOCKSTRUCTS -eq 0 ] && [ $LOCKWAITS -eq 0 ]; then
    echo "OK - No locks seen. | lockstructs=0; lockwaits=0;"
    exit 0
 else
-   if [$LOCKWAITS -gt 0]; then
+   if [ $LOCKWAITS -gt 0 ]; then
       echo "$SORTIDA" | mail -s "Lock wait detected at $(hostname)" $mail
    fi
 
