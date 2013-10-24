@@ -1,0 +1,61 @@
+#!/usr/bin/perl -w
+
+use Net::DNS;
+my $res   = Net::DNS::Resolver->new;
+
+$res->udp_timeout(5);
+
+
+my $queixes="";
+my $acomulat=0;
+
+my $llistat="";
+
+@blacklists=("dnsbl.dronebl.org","access.redhawk.org", "bl.spamcannibal.org", "bl.spamcop.net", "bl.technovision.dk", "blackholes.five-ten-sg.com", "blackholes.wirehub.net", "blacklist.sci.kun.nl", "block.dnsbl.sorbs.net", "blocked.hilli.dk","cart00ney.surriel.com","cbl.abuseat.org","dev.null.dk", "dialup.blacklist.jippg.org", "dialups.mail-abuse.org","dialups.visi.com","dnsbl.ahbl.org","dnsbl.antispam.or.id", "dnsbl.cyberlogic.net","dnsbl.kempt.net", "dnsbl.njabl.org", "dnsbl.sorbs.net", "dnsbl-1.uceprotect.net","dnsbl-2.uceprotect.net", "dnsbl-3.uceprotect.net","dsbl.dnsbl.net.au", "duinv.aupads.org", "dul.dnsbl.sorbs.net","dul.ru", "hil.habeas.com","http.dnsbl.sorbs.net","http.opm.blitzed.org", "intruders.docs.uu.se","korea.services.net", "l1.spews.dnsbl.sorbs.net","l2.spews.dnsbl.sorbs.net","mail-abuse.blacklist.jippg.org","map.spam-rbl.com","misc.dnsbl.sorbs.net", "msgid.bl.gweep.ca", "no-more-funn.moensted.dk","ohps.dnsbl.net.au", "omrs.dnsbl.net.au", "orid.dnsbl.net.au", "orvedb.aupads.org","osps.dnsbl.net.au","osrs.dnsbl.net.au", "owfs.dnsbl.net.au","owps.dnsbl.net.au","probes.dnsbl.net.au","proxy.bl.gweep.ca","psbl.surriel.com","pss.spambusters.org.ar","rbl.schulte.org","rbl.snark.net","rbl.triumf.ca","rdts.dnsbl.net.au","relays.bl.gweep.ca","relays.bl.kundenserver.de","relays.mail-abuse.org","relays.nether.net","ricn.dnsbl.net.au","rmst.dnsbl.net.au","rsbl.aupads.org","sbl.spamhaus.org","sbl-xbl.spamhaus.org","smtp.dnsbl.sorbs.net","socks.dnsbl.sorbs.net","socks.opm.blitzed.org","sorbs.dnsbl.net.au","spam.olsentech.net","spamguard.leadmon.net","spamsites.dnsbl.net.au","spamsources.fabel.dk", "spews.dnsbl.net.au", "t1.dnsbl.net.au", "ucepn.dnsbl.net.au", "web.dnsbl.sorbs.net","whois.rfc-ignorant.org","will-spam-for-food.eu.org","wingate.opm.blitzed.org","xbl.spamhaus.org", "zen.spamhaus.org","zombie.dnsbl.sorbs.net" );
+
+
+#inclou el spam sorbs / ips dels push banejades desde el 2007 - paganini per desllistar
+#@blacklists=("dnsbl.dronebl.org","access.redhawk.org", "bl.spamcannibal.org", "bl.spamcop.net", "bl.technovision.dk", "blackholes.five-ten-sg.com", "blackholes.wirehub.net", "blacklist.sci.kun.nl", "block.dnsbl.sorbs.net", "blocked.hilli.dk","cart00ney.surriel.com","cbl.abuseat.org","dev.null.dk", "dialup.blacklist.jippg.org", "dialups.mail-abuse.org","dialups.visi.com","dnsbl.ahbl.org","dnsbl.antispam.or.id", "dnsbl.cyberlogic.net","dnsbl.kempt.net", "dnsbl.njabl.org", "dnsbl.sorbs.net", "dnsbl-1.uceprotect.net","dnsbl-2.uceprotect.net", "dnsbl-3.uceprotect.net","dsbl.dnsbl.net.au", "duinv.aupads.org", "dul.dnsbl.sorbs.net","dul.ru", "hil.habeas.com","http.dnsbl.sorbs.net","http.opm.blitzed.org", "intruders.docs.uu.se","korea.services.net", "l1.spews.dnsbl.sorbs.net","l2.spews.dnsbl.sorbs.net","mail-abuse.blacklist.jippg.org","map.spam-rbl.com","misc.dnsbl.sorbs.net", "msgid.bl.gweep.ca", "no-more-funn.moensted.dk","ohps.dnsbl.net.au", "omrs.dnsbl.net.au", "orid.dnsbl.net.au", "orvedb.aupads.org","osps.dnsbl.net.au","osrs.dnsbl.net.au", "owfs.dnsbl.net.au","owps.dnsbl.net.au","probes.dnsbl.net.au","proxy.bl.gweep.ca","psbl.surriel.com","pss.spambusters.org.ar","rbl.schulte.org","rbl.snark.net","rbl.triumf.ca","rdts.dnsbl.net.au","relays.bl.gweep.ca","relays.bl.kundenserver.de","relays.mail-abuse.org","relays.nether.net","ricn.dnsbl.net.au","rmst.dnsbl.net.au","rsbl.aupads.org","sbl.spamhaus.org","sbl-xbl.spamhaus.org","smtp.dnsbl.sorbs.net","socks.dnsbl.sorbs.net","socks.opm.blitzed.org","sorbs.dnsbl.net.au","spam.dnsbl.sorbs.net","spam.olsentech.net","spamguard.leadmon.net","spamsites.dnsbl.net.au","spamsources.fabel.dk", "spews.dnsbl.net.au", "t1.dnsbl.net.au", "ucepn.dnsbl.net.au", "web.dnsbl.sorbs.net","whois.rfc-ignorant.org","will-spam-for-food.eu.org","wingate.opm.blitzed.org","xbl.spamhaus.org", "zen.spamhaus.org","zombie.dnsbl.sorbs.net" );
+
+for $arg (@ARGV)
+{
+        $arg=~m/(\d+)\.(\d+)\.(\d+)\.(\d+)/;
+        $arginv=$4.".".$3.".".$2.".".$1;
+
+        $llistat.=" ".$arg;
+
+        for $bl (@blacklists)
+        {
+
+                my $query = $res->search($arginv.".".$bl);
+
+                if ($query)
+                {
+                        #$reason=
+			$res->query($arginv.".".$bl, 'TXT');
+
+                        $queixes.="FOUND $arg in ".$bl."!! ";
+			#(reason: ";
+			#
+                        #for $txt ($reason->answer)
+                        #{
+                        #        $queixes.=$txt->rdatastr if($txt->type eq "TXT");
+                        #}
+                        #$queixes.=");; ";
+
+                        $acomulat++;
+                }
+
+        }
+
+}
+
+if($acomulat!=0)
+{
+        print $queixes."\n";
+        exit 2;
+}
+
+print "OK - $llistat comprobat\n";
+exit 0;
+

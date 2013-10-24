@@ -1,0 +1,139 @@
+#!/bin/bash
+
+criticalflag=0
+warningflag=0
+limite=500
+
+printusage()
+{
+        echo "$0 -v adaptapter"
+        echo ""
+}
+
+while getopts 'v:h:C:w:c:' OPTION
+do
+  case $OPTION in
+  v)    vflag=1
+        vval="$OPTARG"
+        ;;
+  h)    hflag=1
+        hval="$OPTARG"
+        ;;
+  C)    cflag=1
+        cval="$OPTARG"
+        ;;
+  w)    warningflag=1
+        warningval="$OPTARG"
+        ;;
+  c)    criticalflag=1
+        criticalval="$OPTARG"
+        ;;
+  ?)    echo Argument invalid: $OPTION
+        printusage
+        exit 3
+        ;;
+  esac
+done
+
+case $vval in
+	queue)
+	#cua
+	GET=$(snmpget -v 2c -c $cval $hval 1.3.6.1.4.1.15497.1.1.1.11.0 | awk '{print $4}')
+  if [ $GET -ge $limite ]; then
+    echo "CRITICAL - Numero excesivo de mensajes en cola: $GET"
+    exit 2
+  fi
+  STATUS="IronPort queue: $GET|ironqueue=$GET"
+	;;
+
+	memory)
+	#memoria
+	GET=$(snmpget -v 2c -c $cval $hval 1.3.6.1.4.1.15497.1.1.1.1.0 | awk '{print $4}')
+	STATUS="IronPort memory: ${GET}%|ironmem=$GET" 
+	;;
+
+	cpu)
+	#cpu
+	GET=$(snmpget -v 2c -c $cval $hval 1.3.6.1.4.1.15497.1.1.1.2.0 | awk '{print $4}')
+	STATUS="IronPort CPU: ${GET}%|ironcpu=$GET" 
+	;;
+	
+	io)
+	#io
+	GET=$(snmpget -v 2c -c $cval $hval 1.3.6.1.4.1.15497.1.1.1.3.0 | awk '{print $4}')
+	STATUS="IronPort IO: ${GET}%|ironio=$GET" 
+	;;
+	
+	eth)
+	#eth
+	GET=$(snmpget -v 2c -c $cval $hval 1.3.6.1.2.1.2.2.1.10.1 | awk '{print $4}')
+	GET2=$(snmpget -v 2c -c $cval $hval 1.3.6.1.2.1.2.2.1.16.1 | awk '{print $4}')
+	STATUS="IronPort ethernet: RX:${GET}TX:${GET2}|irontx=$GET; ironrx=$GET2" 
+	;;
+	
+	etherr)
+	#etherr
+	GET=$(snmpget -v 2c -c $cval $hval 1.3.6.1.2.1.2.2.1.14.1 | awk '{print $4}')
+	GET2=$(snmpget -v 2c -c $cval $hval 1.3.6.1.2.1.2.2.1.20.1 | awk '{print $4}')
+	STATUS="IronPort ethernet errors: RXerr:${GET}TXerr:${GET2}|irontxerr=$GET; ironrxerr=$GET2" 
+	;;
+	
+	temperature)
+	#temperature
+	GET=$(snmpget -v 2c -c $cval $hval 1.3.6.1.4.1.15497.1.1.1.9.1.2.1 | awk '{print $4}')
+	STATUS="IronPort temperature: ${GET}C|irontemperature=$GET" 
+	;;
+	
+	queuestat)
+	GET=$(snmpget -v 2c -c $cval $hval 1.3.6.1.4.1.15497.1.1.1.5.0 | awk '{print $4}')
+	
+	if [ $GET -eq 1 ];
+	then
+		echo OK - IronPort queue status: Avaliable
+		exit 0
+	elif [ $GET -eq 2 ];
+	then
+		echo WARNING - IronPort queue status: Shortage
+		exit 1
+	elif [ $GET -eq 3 ];
+	then
+		echo CRITICAL - IronPort queue status: FULL
+		exit 2
+	else
+		echo UNKNOWN - IronPort queue status: --unknown--
+		exit 3
+	fi
+	;;		
+	
+	*)
+	echo "UNKNOWN - :)"
+	exit 3
+	;;
+esac
+
+if [ "$GET" = "" ];
+then
+	echo UNKNOWN - $STATUS
+	exit 3
+fi
+
+if [ $(echo $criticalflag+$warningflag | bc) -eq 2 ];
+then
+
+	if [ $GET -gt $criticalval ];
+	then
+		echo CRITICAL - $STATUS
+		exit 2	
+	elif [ $GET -gt $warningval ];
+	then	
+		echo WARNING - $STATUS
+		exit 1
+	else
+		echo OK - $STATUS
+		exit 0
+	fi
+else
+	echo OK - $STATUS
+	exit 0
+fi
+
