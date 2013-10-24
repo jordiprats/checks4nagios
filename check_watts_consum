@@ -1,0 +1,8 @@
+#!/bin/bash
+
+CONSUM=$(/usr/bin/ipmitool sdr type Current | grep "System Level" | rev | cut -d\| -f 1 | rev | awk '{ print $1 }' | tail -n1)
+
+
+echo "consum server ${CONSUM}W|consum=$CONSUM;"
+exit 0
+
