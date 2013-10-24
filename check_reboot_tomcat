@@ -1,0 +1,60 @@
+#!/bin/bash
+
+if [ -z "$1" ];
+then
+	echo "arg1 - tomcat_home"
+	exit 2
+fi
+
+WARNING=20
+CRITICAL=50
+
+cd $1/logs
+
+COUNTTODAY=$(tail -n 5000 $(ls -rt $1/logs/ | grep catalina  | tail -n2) | grep "Server startup" -B1 | grep -v "Server startup" | grep -v -- -- |  awk '{ print $1,$2 }' | grep "$(date '+%b %d')," | wc -l)
+
+COUNTYESTERDAY=$(tail -n 5000 $(ls -rt $1/logs/ | grep catalina  | tail -n2) | grep "Server startup" -B1 | grep -v "Server startup" | grep -v -- -- |  awk '{ print $1,$2 }' | grep "$(date '+%b %d' --date='yesterday')," | wc -l)
+
+COUNT=$(echo $COUNTTODAY+$COUNTYESTERDAY | bc -l)
+
+LASTREBOOT=$(date -d "$(tail -n 5000 $(ls -rt $1/logs/ | grep catalina  | tail -n2) | grep "Server startup" -B1 | grep "org.apache.catalina.startup.Catalina" | tail -n1 | awk '{ print $1,$2,$3,$4,$5 }')" +%s)
+
+NOW=$(date +%s)
+
+DIFERENCIA=$(echo $NOW-$LASTREBOOT | bc -l)
+
+if [ -z "$COUNT" ];
+then
+	echo UNKNOWN
+	exit 3
+fi
+
+if [ -z "$DIFERENCIA" ];
+then
+        echo UNKNOWN
+        exit 3
+fi
+
+# si fa mes de 1 hora sense reboot podem ignorar
+if [ $DIFERENCIA -gt 3600 ];
+then
+	echo "OK - $COUNT Server statups trobats|count=$COUNT"
+	exit 0
+fi
+
+if [ $COUNT -gt $CRITICAL ];
+then
+	echo "CRITICAL - $COUNT Server statups trobats|count=$COUNT"
+	exit 2
+fi
+
+if [ $COUNT -gt $WARNING ];
+then
+	echo "WARNING - $COUNT Server statups trobats|count=$COUNT"
+	exit 1
+fi;
+
+
+echo "OK - $COUNT Server statups trobats|count=$COUNT"
+exit 0
+

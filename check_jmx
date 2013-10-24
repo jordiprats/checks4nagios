@@ -1,0 +1,127 @@
+#!/bin/sh
+#
+# Nagios JMX plugin.
+#
+
+JAVA_CMD=`which java`
+DIR=/usr/local/nagios/libexec/jmx/nagios-jmx-plugin/
+
+if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]
+then
+	echo "Quin a quin port et vols conectar avui?"
+	echo -ne "\t\t$0 <heap> <port jmx> <fitxer drets>\n\n"
+	exit 1
+fi
+
+TIPUSCHECK=$1
+PORTJMX=$2
+USUARIJMX=$(cat $3 | grep -v "^$" | head -n1 | awk '{ print $1 }')
+PASSWORDJMX=$(cat $3 | grep -v "^$" | head -n1 | awk '{ print $2 }')
+
+if [ -z "$USUARIJMX" ] || [ -z $PASSWORDJMX ]
+then
+	echo "error obtenint credencials tomcat"
+	exit 1;
+fi
+
+if [ -z $JAVA_CMD ]
+then
+
+  if [ -x $JAVA_HOME/bin/java ]
+  then
+    JAVA_CMD=$JAVA_HOME/bin/java 
+  else
+    echo JMX CRITICAL - java not found.
+    exit 2
+  fi
+
+fi
+
+if [ $TIPUSCHECK == "heap" ]
+then
+
+FIRST_VALUE=$($JAVA_CMD -jar $DIR/check_jmx.jar -U service:jmx:rmi:///jndi/rmi://127.0.0.1:$PORTJMX/jmxrmi -O "java.lang:type=Memory" -A HeapMemoryUsage -K used --username $USUARIJMX --password $PASSWORDJMX)
+SECOND_VALUE=$($JAVA_CMD -jar $DIR/check_jmx.jar -U service:jmx:rmi:///jndi/rmi://127.0.0.1:$PORTJMX/jmxrmi -O "java.lang:type=Memory" -A HeapMemoryUsage -K committed --username $USUARIJMX --password $PASSWORDJMX)
+
+
+if [ "${FIRST_VALUE:0:6}" = "JMX OK" ] ;
+then
+	if [ "${SECOND_VALUE:0:6}" = "JMX OK" ] ;
+	then
+	
+		
+		RESULT=`echo ${FIRST_VALUE:8} | sed "s/|.*//g"`
+		RESULT=${RESULT}`echo ${SECOND_VALUE:8} | sed "s/|.*//g"`
+		RESULT=${RESULT}" | "
+		RESULT=${RESULT}`echo ${FIRST_VALUE:8}|sed "s/.*|//g" | sed "s/;//g"`";"
+		RESULT=${RESULT}`echo ${SECOND_VALUE:8}|sed "s/.*|//g" | sed "s/;//g"`";"
+	fi
+else
+	echo "error obtenint valors"
+	exit 2
+fi	
+
+
+echo $RESULT | sed 's/HeapMemoryUsage./heap/g'
+
+
+elif [ $TIPUSCHECK == "gctime" ]
+then
+
+#/usr/bin/java -jar /usr/local/nagios/libexec/jmx/nagios-jmx-plugin//check_jmx.jar -U service:jmx:rmi:///jndi/rmi://127.0.0.1:9002/jmxrmi --username systemadmin --password owejmcweopcewmpcewroicvmdsavsd -O "java.lang:type=GarbageCollector,name=ConcurrentMarkSweep" -A LastGcInfo -K duration -w 3500 -c 4000 -u ms
+#JMX CRITICAL - LastGcInfo.duration = 5273ms | 'LastGcInfo duration'=5273ms;3500;4000;;
+
+#| awk '{ print $NF }' | cut -f2 -d= | sed 's/\([0-9]*\).*/\1/g'
+
+GC_TIME=$($JAVA_CMD -jar $DIR/check_jmx.jar -U service:jmx:rmi:///jndi/rmi://127.0.0.1:$PORTJMX/jmxrmi --username $USUARIJMX --password $PASSWORDJMX -O "java.lang:type=GarbageCollector,name=ConcurrentMarkSweep" -A LastGcInfo -K duration -w 3500 -c 4000 -u ms | awk '{ print $NF }' | cut -f2 -d= | sed 's/\([0-9]*\).*/\1/g')
+
+if [ -z "$GC_TIME" ]
+then
+	echo "garbage collector time=NULL|gctime=0;"	
+	exit 0
+fi
+
+echo "garbage collector time = ${GC_TIME}ms|gctime=$GC_TIME;"
+#TODO: exit segons valor
+exit 0
+
+elif [ $TIPUSCHECK == "permgen" ]
+then
+
+#[root@ft197 banking]# /usr/bin/java -jar /usr/local/nagios/libexec/jmx/nagios-jmx-plugin//check_jmx.jar -U service:jmx:rmi:///jndi/rmi://127.0.0.1:9002/jmxrmi --username systemadmin --password owejmcweopcewmpcewroicvmdsavsd -O "java.lang:type=MemoryPool,name=CMS Perm Gen" -A PeakUsage -K used -u B -o resetPeakUsage
+#JMX OK - PeakUsage.used = 98611032B | 'PeakUsage used'=98611032B;;;;
+
+USED_PERMGEN=$($JAVA_CMD -jar $DIR/check_jmx.jar -U service:jmx:rmi:///jndi/rmi://127.0.0.1:$PORTJMX/jmxrmi --username $USUARIJMX --password $PASSWORDJMX -O "java.lang:type=MemoryPool,name=CMS Perm Gen" -A PeakUsage -K used -u B -o resetPeakUsage | awk '{ print $NF }' | cut -f2 -d= | sed 's/\([0-9]*\).*/\1/g')
+COMMITTED_PERMGEN=$($JAVA_CMD -jar $DIR/check_jmx.jar -U service:jmx:rmi:///jndi/rmi://127.0.0.1:$PORTJMX/jmxrmi --username $USUARIJMX --password $PASSWORDJMX -O "java.lang:type=MemoryPool,name=CMS Perm Gen" -A PeakUsage -K committed -u B -o resetPeakUsage | awk '{ print $NF }' | cut -f2 -d= | sed 's/\([0-9]*\).*/\1/g')
+MAX_PERMGEN=$($JAVA_CMD -jar $DIR/check_jmx.jar -U service:jmx:rmi:///jndi/rmi://127.0.0.1:$PORTJMX/jmxrmi --username $USUARIJMX --password $PASSWORDJMX -O "java.lang:type=MemoryPool,name=CMS Perm Gen" -A PeakUsage -K max -u B -o resetPeakUsage | awk '{ print $NF }' | cut -f2 -d= | sed 's/\([0-9]*\).*/\1/g')
+
+if [ -z "$USED_PERMGEN" ] || [ -z "$COMMITTED_PERMGEN" ] || [ -z "$MAX_PERMGEN" ]
+then
+	echo "error obtenint valors"
+	exit 2
+fi
+
+echo "PERMGEN $USED_PERMGEN/$MAX_PERMGEN $(echo "($USED_PERMGEN/$MAX_PERMGEN)*100" | bc -l | sed 's/\([0-9]*\).*/\1/g')% | pgused=$USED_PERMGEN; pgcommitted=$COMMITTED_PERMGEN; pgmax=$MAX_PERMGEN;"
+exit 0
+
+elif [ $TIPUSCHECK == "threads" ]
+then
+
+#-O "java.lang:type=Threading" -A ThreadCount
+
+THREAD_COUNT=$($JAVA_CMD -jar $DIR/check_jmx.jar -U service:jmx:rmi:///jndi/rmi://127.0.0.1:$PORTJMX/jmxrmi --username $USUARIJMX --password $PASSWORDJMX -O "java.lang:type=Threading" -A ThreadCount | awk '{ print $NF }' | cut -f2 -d= | sed 's/\([0-9]*\).*/\1/g')
+
+if [ -z "$THREAD_COUNT" ]
+then
+	echo "error obtenint valors"
+        exit 2
+fi
+
+echo "thread count: $THREAD_COUNT|threadcount=$THREAD_COUNT;"
+exit 0
+
+else
+echo "CRITICAL - error tipus de check"
+exit 2
+fi
+
