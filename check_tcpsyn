@@ -1,0 +1,57 @@
+#!/bin/bash
+
+NMAPBIN=$(which nmap 2> /dev/null)
+
+if [ $? -ne 0 ]; then
+   if [ -f /usr/local/bin/nmap ]; then
+      NMAPBIN=/usr/local/bin/nmap
+   else
+      NMAPBIN=$(find /usr/ -type f -name nmap | head -n1)
+      if [ -z "$NMAPBIN" ]; then
+         echo "nmap NOT FOUND"
+         exit 3
+      fi
+   fi
+fi
+
+EXPECTING="open"
+
+while getopts ':h:p:e:' OPTION
+do
+  case $OPTION in
+  h)    HOST="$OPTARG"
+        ;;
+  p)    PORT="$OPTARG"
+        ;;
+  e)    EXPECTING="$OPTARG"
+	;;
+  ?)    echo "Unknown Parameter: -$OPTARG"
+        echo "Usage: $0 -h host -p port"
+        exit 3
+        ;;
+  esac
+done
+
+if [ -z "$HOST" ] || [ -z "$PORT" ]; then
+	echo "Usage: $0 -h host -p port"
+	if [ $RANDOM -gt $RANDOM ]; then echo "IDIOTEN!!!!!!"; fi
+	exit 3;
+fi
+
+NMAPOUT=$($NMAPBIN -oG - -p $PORT $HOST | grep -v "^#")
+
+#[jprats@croscat nagios-systemadmin]$ ./check_tcpsyn -h 127.0.0.1 -p 80
+#Host: 127.0.0.1 (croscat.tetillas.com)	Status: Up
+#Host: 127.0.0.1 (croscat.tetillas.com)	Ports: 80/closed/tcp//http///
+
+
+STATUSPORT=$(echo "$NMAPOUT" | grep "Ports:" | awk '{ print $NF }' | cut -f 2 -d/ | head -n1)
+
+if [ "$STATUSPORT" != "$EXPECTING" ];
+then
+	echo "CRITICAL: port $PORT is $STATUSPORT, but it's supposed to be $EXPECTING"
+	exit 2
+else
+	echo "OK: port $PORT is $STATUSPORT"
+	exit 0
+fi
