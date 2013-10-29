@@ -14,7 +14,7 @@ elif [ $# -eq 3 ]; then
 elif [ $# -eq 2 ]; then
    PORT=80
 else
-   echo "Mal cridat el script $0 HOST IP [PORT] [PORT MAX-ALERT-TIME] | connect=; ttfb=; totaltime=; size=;"
+   echo "Mal cridat el script $0 HOST IP [PORT [MAX-ALERT-TIME]] | connect=; ttfb=; totaltime=; size=;"
    exit 1
 fi
 
