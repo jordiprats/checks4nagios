@@ -35,7 +35,7 @@ eval $RES
 if [ $Response = "200" ]; then
    if [ $(echo "$Total_time >= $MAX_ALLOWED_TOTAL_TIME" | bc) -eq 1 ]; then
       echo "Too much time!! Connect=$Connect TTFB=$TTFB Total_time=$Total_time size=$size| connect=$Connect; ttfb=$TTFB; totaltime=$Total_time; size=$size;"
-      exit 3
+      exit 2
    elif [ $(echo "$Total_time < $MAX_ALLOWED_TOTAL_TIME" | bc) -eq 1 ]; then
          echo "OK - Connect=$Connect TTFB=$TTFB Total_time=$Total_time size=$size| connect=$Connect; ttfb=$TTFB; totaltime=$Total_time; size=$size;"
          exit 0
