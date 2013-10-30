@@ -33,12 +33,12 @@ do
 done
 
 if [ -z "$HOST" ] || [ -z "$PORT" ]; then
-	echo "Usage: $0 -h host -p port"
+	echo "Usage: $0 -h host -p port [-e port_state]"
 	if [ $RANDOM -gt $RANDOM ]; then echo "IDIOTEN!!!!!!"; fi
 	exit 3;
 fi
 
-NMAPOUT=$($NMAPBIN -oG - -p $PORT $HOST | grep -v "^#")
+NMAPOUT=$($NMAPBIN -sS -oG - -p $PORT $HOST | grep -v "^#")
 
 #[jprats@croscat nagios-systemadmin]$ ./check_tcpsyn -h 127.0.0.1 -p 80
 #Host: 127.0.0.1 (croscat.tetillas.com)	Status: Up
