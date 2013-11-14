@@ -1,5 +1,47 @@
 #!/bin/bash
-LASTLINE=$(grep -E "^[0-9]{6}" $(echo "show variables like 'log_error';" | mysql -p$(cat /var/mysql/.mysql.root.pass) -N | head -n1 | awk '{ print $NF }') | tail -n1)
+
+#-p password
+
+while getopts 'p:' OPTION
+do
+  case $OPTION in
+  p)    MYSQLPASSWORD="-p$OPTARG"
+	;;
+  ?)    echo -e "\nUnknown Parameter: -$OPTARG"
+        echo -e "\nUsage: $0 [-p password]\n"
+        exit 3
+        ;;
+  esac
+done
+
+MYSQLBIN=$(which mysql 2> /dev/null)
+if [ $? -ne 0 ]; then
+   if [ -f /usr/local/mysql/bin/mysql ]; then
+      MYSQLBIN=/usr/local/mysql/bin/mysql
+   else
+      MYSQLBIN=$(find /usr/local/ -type f -name mysql | head -n1)
+      if [ -z "$MYSQLBIN" ]; then
+         echo "mysql NOT FOUND"
+         exit 3
+      fi
+   fi
+fi
+
+if [ -z "$MYSQLPASSWORD" ];
+then
+	if [ -f /var/mysql/.mysql.root.pass ];
+	then
+		MYSQLPASSWORD="-p$(cat /var/mysql/.mysql.root.pass)"
+	fi
+fi
+
+echo "select version();" | $MYSQLBIN $MYSQLPASSWORD > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+   echo "Unable to connecto to MySQL"
+   exit 3 
+fi
+
+LASTLINE=$(grep -E "^[0-9]{6}" $(echo "show variables like 'log_error';" | $MYSQLBIN -p$(cat /var/mysql/.mysql.root.pass) -N | head -n1 | awk '{ print $NF }') | tail -n1)
 
 if [ $# -gt 0 ]
 then
@@ -20,12 +62,12 @@ case $LASTLINE in
 	;;
 
 *'lost+found'*)
-        echo "OK - lost+found trobat"
+        echo "OK - lost+found found"
         exit 0
         ;;
 
 *'ready for connections'*)
-        echo "OK - MySQL ready :)"
+        echo "OK - MySQL ready"
         exit 0
         ;;
 
@@ -35,22 +77,22 @@ case $LASTLINE in
         ;;
 
 *shutdown* | *'Forcing close of thread'*)
-        echo "WARNING - Apagant el MySQL - $LASTLINE"
+        echo "WARNING - MySQL is closing - $LASTLINE"
         exit 1
         ;;
 
 *Shutdown*)
-        echo "WARNING - MySQL apagat! - $LASTLINE"
+        echo "WARNING - MySQL DOWN! - $LASTLINE"
         exit 1
         ;;
 
 *'ERROR'*)
-        echo "WARNING error desconegut - $LASTLINE"
+        echo "WARNING - ERROR found: $LASTLINE"
         exit 1
         ;;
 
 *)
-        echo "Suposo que OK - $LASTLINE"
+        echo "OK - $LASTLINE"
         exit 0
 
 esac
