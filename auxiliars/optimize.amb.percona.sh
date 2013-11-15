@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#cosa del gerard
+
 DBNAME="TODO!!!"
 
 for last; do true; done
