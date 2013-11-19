@@ -43,7 +43,7 @@ RAWUMEM=`free | grep buffers/cache | awk '{ print $3 }'`
 
 TMEM=$(free | grep "^Mem" | awk '{print $2}')
 
-FMEM=$(echo "($RAWUMEM/$TMEM)*100" | bc -l | sed 's/\..*//g')
+FMEM=$(echo "($RAWUMEM/$TMEM)*100" | bc -l | sed 's/^\./0./;s/\..*//')
 
 # output with or without performance data
 if [ "$perform" = "yes" ]; then
