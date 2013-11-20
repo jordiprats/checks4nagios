@@ -13,7 +13,7 @@ else
 	DISPOSITIU=$(ls -la $(df -P $1 | tail -n1 | awk '{ print $1 }') | awk '{ if ($5 == "253,") { printf "dm-%d",$6 } else { print $NF } }' | awk -F / '{ print $NF }')
 fi
 
-USDISK=$(cat $IOSTATTEMP | grep $DISPOSITIU | tail -n1 | awk '{ print $NF }')
+USDISK=$(cat $IOSTATTEMP | awk ' $1=="'$1'" { print; }' | tail -n1 | awk '{ print $NF }')
 
 if [ -z "$USDISK" ];
 then
