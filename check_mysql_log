@@ -2,9 +2,11 @@
 
 #-p password
 
-while getopts 'p:' OPTION
+while getopts 'u:p:' OPTION
 do
   case $OPTION in
+  u)	MYSQLUSER="-u$OPTARG"
+	;;
   p)    MYSQLPASSWORD="-p$OPTARG"
 	;;
   ?)    echo -e "\nUnknown Parameter: -$OPTARG"
@@ -35,13 +37,20 @@ then
 	fi
 fi
 
-echo "select version();" | $MYSQLBIN $MYSQLPASSWORD > /dev/null 2>&1
+if [ -z "$MYSQLUSER" ];
+then
+	MYSQLUSER="-uroot"
+fi
+
+MYSQLAUTH="$MYSQLPASSWORD $MYSQLUSER"
+
+echo "select version();" | $MYSQLBIN $MYSQLAUTH > /dev/null 2>&1
 if [ $? -ne 0 ]; then
    echo "Unable to connecto to MySQL"
    exit 3 
 fi
 
-LASTLINE=$(grep -E "^[0-9]{6}" $(echo "show variables like 'log_error';" | $MYSQLBIN -p$(cat /var/mysql/.mysql.root.pass) -N | head -n1 | awk '{ print $NF }') | tail -n1)
+LASTLINE=$(grep -E "^[0-9]{6}" $(echo "show variables like 'log_error';" | $MYSQLBIN $MYSQLAUTH -N | head -n1 | awk '{ print $NF }') | tail -n1)
 
 if [ -z "$LASTLINE" ];
 then
