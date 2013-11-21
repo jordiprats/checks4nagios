@@ -1,6 +1,13 @@
 #!/bin/bash
 
-IOWAIT=$(iostat | head -n4 | tail -n1 | awk '{print $4}')
+IOSTATBIN=$(which iostat 2> /dev/null)
+if [ $? -ne 0 ];
+then
+        echo "UNKNOWN - iostat NOT found"
+        exit 3
+fi
+
+IOWAIT=$($IOSTATBIN | head -n4 | tail -n1 | awk '{print $4}')
 
 XIOWAIT=$(echo $IOWAIT | sed 's/\..*//ig')
 
