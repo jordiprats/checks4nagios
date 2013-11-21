@@ -5,7 +5,6 @@
 ## Capture locks from innodb databases and sends an email with the locking query
 ##
 ## Gerard Alcorlo Bofill
-## Agraïment especial a Jordi Prats Català
 
 
 #set -xv
