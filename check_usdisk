@@ -1,8 +1,14 @@
 #!/bin/bash
 
+IOSTATBIN=$(which iostat 2> /dev/null)
+if [ $? -ne 0 ];
+then
+        echo "UNKNOWN - iostat NOT found"
+        exit 3
+fi
+
 IOSTATTEMP=$(mktemp /tmp/usdisk.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX)
 
-iostat -dkx 5 3 > $IOSTATTEMP
 
 cat /proc/partitions | grep $1 2>&1 >/dev/null
 
@@ -13,11 +19,13 @@ else
 	DISPOSITIU=$(ls -la $(df -P $1 | tail -n1 | awk '{ print $1 }') | awk '{ if ($5 == "253,") { printf "dm-%d",$6 } else { print $NF } }' | awk -F / '{ print $NF }')
 fi
 
-USDISK=$(cat $IOSTATTEMP | awk ' $1=="'$1'" { print; }' | tail -n1 | awk '{ print $NF }')
+$IOSTATBIN -dkx -p ALL 5 3 > $IOSTATTEMP
+
+USDISK=$(cat $IOSTATTEMP | awk ' $1=="'$DISPOSITIU'" { print $NF }' | tail -n1 )
 
 if [ -z "$USDISK" ];
 then
-	echo "UNKNOWN  - ERROR"
+	echo "UNKNOWN - ERROR"
 	exit 3
 fi
 
