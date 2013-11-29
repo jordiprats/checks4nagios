@@ -15,13 +15,13 @@ COUNTTODAY=$(tail -n 5000 $(ls -rt $1/logs/ | grep catalina  | tail -n2) | grep 
 
 COUNTYESTERDAY=$(tail -n 5000 $(ls -rt $1/logs/ | grep catalina  | tail -n2) | grep "Server startup" -B1 | grep -v "Server startup" | grep -v -- -- |  awk '{ print $1,$2 }' | grep "$(date '+%b %d' --date='yesterday')," | wc -l)
 
-COUNT=$(echo $COUNTTODAY+$COUNTYESTERDAY | bc -l)
+COUNT=$(($COUNTTODAY+$COUNTYESTERDAY))
 
 LASTREBOOT=$(date -d "$(tail -n 5000 $(ls -rt $1/logs/ | grep catalina  | tail -n2) | grep "Server startup" -B1 | grep "org.apache.catalina.startup.Catalina" | tail -n1 | awk '{ print $1,$2,$3,$4,$5 }')" +%s)
 
 NOW=$(date +%s)
 
-DIFERENCIA=$(echo $NOW-$LASTREBOOT | bc -l)
+DIFERENCIA=$(($NOW-$LASTREBOOT))
 
 if [ -z "$COUNT" ];
 then
