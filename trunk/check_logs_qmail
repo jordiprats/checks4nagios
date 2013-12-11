@@ -1,0 +1,20 @@
+#!/bin/bash
+LASTLOGQMAILSEND=$(date -d "$(tail -n 1 /var/log/qmail/current | tai64nlocal | cut -f1 -d.)" +%s)
+LASTLOGQMAILSMTPD=$(date -d "$(tail -n 1 /var/log/qmail/smtpd/current | tai64nlocal | cut -f1 -d.)" +%s)
+DATENOW=$(date +%s)
+
+if [ "$(($DATENOW-LASTLOGQMAILSMTPD))" -gt "$((60*60))" ];
+then
+	echo "qmail-smtpd porta una hora sense generar logs"
+	exit 2
+fi
+
+if [ "$(($DATENOW-LASTLOGQMAILSEND))" -gt "$((60*60))" ];
+then
+        echo "qmail-send porta una hora sense generar logs"
+        exit 2
+fi
+
+echo "qmail-send i qmail-smtpd OK"
+exit 0
+
