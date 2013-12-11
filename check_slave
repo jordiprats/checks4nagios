@@ -9,14 +9,27 @@ BACKUP=$(pgrep mylvmbackup)
 
 PASSWORD=$(cat /var/mysql/.mysql.root.pass)
 
-mysql --socket=$SOCKET -uroot -p$PASSWORD -e "quit" > /dev/null 2>&1
+MYSQLBIN=$(which mysql 2> /dev/null)
+if [ $? -ne 0 ]; then
+   if [ -f /usr/local/mysql/bin/mysql ]; then
+      MYSQLBIN=/usr/local/mysql/bin/mysql
+   else
+      MYSQLBIN=$(find /usr/local/ -type f -name mysql | head -n1)
+      if [ -z "$MYSQLBIN" ]; then
+         echo "mysql NOT FOUND"
+         exit 3
+      fi
+   fi
+fi
+
+$MYSQLBIN --socket=$SOCKET -uroot -p$PASSWORD -e "quit" > /dev/null 2>&1
 
 if [ $? -ne 0 ]; then
 	echo "CRITICAL - MySQL DOWN"
 	exit 2
 fi
 
-SBM=$(mysql --socket=$SOCKET -uroot -p$PASSWORD -e "show slave status\G" | grep "Seconds_Behind_Master" | sed "s/.*Master: \([^$]*\)$/\1/g")
+SBM=$($MYSQLBIN --socket=$SOCKET -uroot -p$PASSWORD -e "show slave status\G" | grep "Seconds_Behind_Master" | sed "s/.*Master: \([^$]*\)$/\1/g")
 
 case $SBM in
   "0")
@@ -24,9 +37,9 @@ case $SBM in
     exit 0
     ;;
   "NULL")
-    errores=`mysql --socket=$SOCKET -uroot -p$PASSWORD -e "show slave status\G" | grep "Last_\(SQL\|IO\)_Error:"`
+    errores=`$MYSQLBIN --socket=$SOCKET -uroot -p$PASSWORD -e "show slave status\G" | grep "Last_\(SQL\|IO\)_Error:"`
 
-#    echo "set global sql_slave_skip_counter=1;" |mysql --socket=$SOCKET -uroot -p$PASSWORD
+#    echo "set global sql_slave_skip_counter=1;" |$MYSQLBIN --socket=$SOCKET -uroot -p$PASSWORD
 #    echo "start slave;" | mysql --socket=$SOCKET -uroot -p$PASSWORD
 
     error1=$(echo "$errores" | head -1 | cut -d':' -f2)
@@ -50,4 +63,5 @@ case $SBM in
     fi
     ;;
 esac
+
 
