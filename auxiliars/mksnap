@@ -1,0 +1,21 @@
+#!/bin/bash
+
+CURRENTSNAP=$(/bin/date +"%H")
+
+/bin/touch /tmp/snap.in.progress
+
+/bin/unlink /dev/bacula.snap
+/usr/sbin/lvremove -f /dev/data/snap.${CURRENTSNAP}
+
+if [ -n "$(echo "show processlist;" | mysql -uroot -pXXXXXXXXXXXXXXX)" ];
+then
+        echo "snapshot anulat" | mail -s "$(hostname -s) snapshow anulat" sistemas@XXXXXXXXXXXXX.com
+        exit 0
+fi
+
+/usr/bin/mylvmbackup
+/usr/sbin/lvrename /dev/data/snap.backup /dev/data/snap.${CURRENTSNAP}
+/bin/ln -s /dev/data/snap.${CURRENTSNAP} /dev/bacula.snap
+
+/bin/rm -f /tmp/snap.in.progress
+
