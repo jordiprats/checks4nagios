@@ -1,2 +1,49 @@
+#!/bin/bash
 
+SOLR_CONF=/var/solr-home/solr.xml
+SOLR_URL="localhost:8983/solr"
+
+PATH="/usr/lib64/qt-3.3/bin:/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin"
+
+curl -I "$SOLR_URL" >/dev/null 2>&1
+if [ $? -ne 0 ];
+then
+	echo "SOLR NOT AVAILABLE"
+	exit 2
+fi
+
+ERRORCORE=""
+COREOK=""
+
+
+for i in $(cat "$SOLR_CONF" | grep "<core " | sed 's/<core.*name=\"\([^\"]\+\)".*>/\1/'); 
+do 
+	FOUND=$(curl "$SOLR_URL/$i/select?q=*:*&rows=1" 2>/dev/null | sed 's/.*"numFound":\([0-9]\+\),.*/\1/')
+	if [ -z "$FOUND" ];
+	then
+		ERRORCORE="$ERRORCORE ERROR core $i: NULL"
+	else
+		REGEXNUM='^[0-9]+$'
+		if ! [[ "$FOUND" =~ $REGEXNUM ]];
+		then
+			ERRORCORE="$ERRORCORE ERROR core $i: $FOUND"
+		else
+			if [ "$FOUND" -le 0 ];
+			then
+				ERRORCORE="$ERRORCORE ERROR core $i: 0 ROWS!!"
+			else
+				COREOK="$COREOK core $i: $FOUND"
+			fi
+		fi
+	fi
+done
+
+if [ -z "$ERRORCORE" ];
+then
+	echo OK - $COREOK
+	exit 0
+else
+	echo CRITICAL - $ERRORCORE $COREOK
+	exit 2
+fi
 
