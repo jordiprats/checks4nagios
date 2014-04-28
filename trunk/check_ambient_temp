@@ -1,14 +1,19 @@
 #!/bin/bash
 
+#exec 2>/dev/null
+
 TEMPWARNING="35"
 TEMPCRITICAL="40"
+TEMPTYPE="Ambient Temp"
 
-while getopts 'w:c:h' OPT; 
+while getopts 'w:c:t:h' OPT; 
 do
 	case $OPT in
 		w)  TEMPWARNING=$OPTARG
 		;;
 		c)  TEMPCRITICAL=$OPTARG
+		;;
+		t)  TEMPTYPE=$OPTARG
 		;;
 		h)  JELP="yes"
 		;;
@@ -25,12 +30,12 @@ fi
 
 if [ -n "$JELP" ];
 then
-	echo $0 [-w WARNING] [-c CRITICAL]
+	echo $0 [-w WARNING] [-c CRITICAL] [-t type]
 	exit 3;
 fi
 
 
-TEMPERATURA=$(/usr/bin/ipmitool sdr type Temperature | grep "Ambient Temp" |awk '{ print $10 }' | grep -v  "na" | sed 's/\..*//g' | head -n1)
+TEMPERATURA=$(/usr/bin/ipmitool sdr type Temperature | grep $TEMPTYPE |awk '{ print $10 }' | grep -v  "na" | sed 's/\..*//g' | head -n1)
 
 
 if [ -z "$TEMPERATURA"  ];
