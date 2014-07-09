@@ -35,10 +35,9 @@ do
   esac
 done
 
-
+MAILCMD=$(which mail 2>/dev/null)
 
 MYSQLADMINBIN=$(which mysqladmin 2> /dev/null)
-
 if [ $? -ne 0 ]; then
    if [ -f /usr/local/mysql/bin/mysqladmin ]; then
       MYSQLADMINBIN=/usr/local/mysql/bin/mysqladmin
@@ -109,13 +108,19 @@ if [ $LOCKSTRUCTS -eq 0 ] && [ $LOCKWAITS -eq 0 ]; then
    echo "OK - No locks seen. | lockstructs=0; lockwaits=0;"
    exit 0
 else
-   if [ ! -z "$MAIL" ]; then
+   if [ ! -z "$MAIL" ] && [ ! -z "$MAILCMD" ]; then
       if [ $LOCKWAITS -gt 0 ]; then
-         echo "$SORTIDA" | mail -s "Lock wait detected at $(hostname)" $MAIL
+         echo "$SORTIDA" | $MAILCMD -s "Lock wait detected at $(hostname)" $MAIL
       fi
    fi
 
-   echo "WARNING - Locks seen: LOCKSTRUCTS=$LOCKSTRUCTS LOCKWAITS=$LOCKWAITS | lockstructs=$LOCKSTRUCTS; lockwaits=$LOCKWAITS;"
+   if [ -z "$MAILCMD" ] && [ ! -z "$MAIL" ];
+   then
+      echo "WARNING - NO MAIL COMMAND FOUND - Locks seen: LOCKSTRUCTS=$LOCKSTRUCTS LOCKWAITS=$LOCKWAITS | lockstructs=$LOCKSTRUCTS; lockwaits=$LOCKWAITS;"
+   else
+      echo "WARNING - Locks seen: LOCKSTRUCTS=$LOCKSTRUCTS LOCKWAITS=$LOCKWAITS | lockstructs=$LOCKSTRUCTS; lockwaits=$LOCKWAITS;"
+   fi
    exit 1
+	
 fi
 
