@@ -1,12 +1,5 @@
 #!/bin/bash
 
-
-##
-## Capture locks from innodb databases and sends an email with the locking query
-##
-## Gerard Alcorlo Bofill
-
-
 #set -xv
 
 #-u user
@@ -24,8 +17,6 @@ fi
 
 user="-uroot"
 
-mail=""
-
 while getopts ':u:p:h:m:' OPTION
 do
   case $OPTION in
@@ -35,7 +26,7 @@ do
         ;;
   h)    host="-h$OPTARG"
         ;;
-  m)    mail="$mail $OPTARG"
+  m)    MAIL="$MAIL $OPTARG"
         ;;
   ?)    echo -e "\nUnknown Parameter: -$OPTARG"
         echo -e "\nUsage: $0 [-u user] [-p password] [-h host] [[-m mail] ...]\n"
@@ -118,8 +109,10 @@ if [ $LOCKSTRUCTS -eq 0 ] && [ $LOCKWAITS -eq 0 ]; then
    echo "OK - No locks seen. | lockstructs=0; lockwaits=0;"
    exit 0
 else
-   if [ $LOCKWAITS -gt 0 ]; then
-      echo "$SORTIDA" | mail -s "Lock wait detected at $(hostname)" $mail
+   if [ ! -z "$MAIL" ]; then
+      if [ $LOCKWAITS -gt 0 ]; then
+         echo "$SORTIDA" | mail -s "Lock wait detected at $(hostname)" $MAIL
+      fi
    fi
 
    echo "WARNING - Locks seen: LOCKSTRUCTS=$LOCKSTRUCTS LOCKWAITS=$LOCKWAITS | lockstructs=$LOCKSTRUCTS; lockwaits=$LOCKWAITS;"
