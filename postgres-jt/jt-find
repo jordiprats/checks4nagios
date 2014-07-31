@@ -3,6 +3,8 @@
 PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 SOCKETPSQL=/var/run/postgresql/
+PSQLBASEOPTS="-A -t -q --pset pager=off"
+
 
 USERNAME=postgres
 DATABASE=postgres
@@ -45,9 +47,9 @@ fi
 
 if [ -z "$EXECCMD" ];
 then
-	$PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" -A -t -q --pset pager=off -c "select table_name from information_schema.tables where table_type='BASE TABLE';"
+	$PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" $PSQLBASEOPTS -c "select table_name from information_schema.tables where table_type='BASE TABLE';"
 else
-	$PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" -A -t -q --pset pager=off -c "select table_name from information_schema.tables where table_type='BASE TABLE';" | xargs -I %t echo "$EXECCMD" | $PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" -A -t -q --pset pager=off$PSQLBIN -U "$USERNAME" -d "$DATABASE" -A -t -q --pset pager=off
+	$PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" $PSQLBASEOPTS -c "select table_name from information_schema.tables where table_type='BASE TABLE';" | xargs -I %t echo "$EXECCMD" | $PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" $PSQLBASEOPTS
 fi
 
 
