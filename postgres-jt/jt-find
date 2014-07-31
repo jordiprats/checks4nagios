@@ -7,7 +7,7 @@ SOCKETPSQL=/var/run/postgresql/
 USERNAME=postgres
 DATABASE=postgres
 
-while getopts 'hd:U:e:' OPT; 
+while getopts 'h:d:U:e:' OPT; 
 do
 	case $OPT in
 		d)  DATABASE="$OPTARG"
@@ -16,7 +16,7 @@ do
 		;;
 		e)  EXECCMD="$OPTARG"
 		;;
-		h)  JELP=1
+		h)  SOCKETPSQL="$OPTARG"
 		;;
 		*)  WTF="yes"
 		;;
@@ -30,6 +30,7 @@ then
 	echo "usage: $0 -d <DATABASE> [OPTIONS]"
 	echo -e "\t-d\t\tdatabase name to connect to (default: $USER)"
 	echo -e "\t-U\t\tdatabase user name (default: $USER)"
+	echo -e "\t-h\t\tdatabase server host or socket directory (default: /var/run/postgresql)"
 	echo -e "\t-e\t\tcommand to run (use %t for table)"
 	exit 1
 fi
@@ -48,4 +49,5 @@ then
 else
 	$PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" -A -t -q --pset pager=off -c "select table_name from information_schema.tables where table_type='BASE TABLE';" | xargs -I %t echo "$EXECCMD" | $PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" -A -t -q --pset pager=off$PSQLBIN -U "$USERNAME" -d "$DATABASE" -A -t -q --pset pager=off
 fi
+
 
