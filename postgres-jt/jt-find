@@ -2,14 +2,14 @@
 
 PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-SOCKETPSQL=/var/run/postgresql/
 PSQLBASEOPTS="-A -t -q --pset pager=off"
 
-
+SOCKETPSQL=/var/run/postgresql/
 USERNAME=postgres
 DATABASE=postgres
+PORTSQL=5432
 
-while getopts 'h:d:U:e:' OPT; 
+while getopts 'h:d:U:e:p:' OPT; 
 do
 	case $OPT in
 		d)  DATABASE="$OPTARG"
@@ -19,6 +19,8 @@ do
 		e)  EXECCMD="$OPTARG"
 		;;
 		h)  SOCKETPSQL="$OPTARG"
+		;;
+		p)  PORTSQL="$OPTARG"
 		;;
 		*)  WTF="yes"
 		;;
@@ -33,6 +35,7 @@ then
 	echo -e "\t-d\t\tdatabase name to connect to (default: $USER)"
 	echo -e "\t-U\t\tdatabase user name (default: $USER)"
 	echo -e "\t-h\t\tdatabase server host or socket directory (default: /var/run/postgresql)"
+	echo -e "\t-p\t\tdatabase server port (default: 5432)"
 	echo -e "\t-e\t\tcommand to run (use %t for table)"
 	exit 1
 fi
@@ -47,9 +50,9 @@ fi
 
 if [ -z "$EXECCMD" ];
 then
-	$PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" $PSQLBASEOPTS -c "select table_name from information_schema.tables where table_type='BASE TABLE';"
+	$PSQLBIN -h "$SOCKETPSQL" -p "$PORTSQL" -U "$USERNAME" -d "$DATABASE" $PSQLBASEOPTS -c "select table_name from information_schema.tables where table_type='BASE TABLE';"
 else
-	$PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" $PSQLBASEOPTS -c "select table_name from information_schema.tables where table_type='BASE TABLE';" | xargs -I %t echo "$EXECCMD" | $PSQLBIN -h "$SOCKETPSQL" -U "$USERNAME" -d "$DATABASE" $PSQLBASEOPTS
+	$PSQLBIN -h "$SOCKETPSQL" -p "$PORTSQL" -U "$USERNAME" -d "$DATABASE" $PSQLBASEOPTS -c "select table_name from information_schema.tables where table_type='BASE TABLE';" | xargs -I %t echo "$EXECCMD" | $PSQLBIN -h "$SOCKETPSQL" -p "$PORTSQL" -U "$USERNAME" -d "$DATABASE" $PSQLBASEOPTS
 fi
 
 
