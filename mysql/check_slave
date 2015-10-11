@@ -1,0 +1,67 @@
+#!/bin/sh
+
+#set -xv
+
+MAXSBM=2000
+
+SOCKET=/tmp/mysql.sock
+BACKUP=$(pgrep mylvmbackup)
+
+PASSWORD=$(cat /var/mysql/.mysql.root.pass)
+
+MYSQLBIN=$(which mysql 2> /dev/null)
+if [ $? -ne 0 ]; then
+   if [ -f /usr/local/mysql/bin/mysql ]; then
+      MYSQLBIN=/usr/local/mysql/bin/mysql
+   else
+      MYSQLBIN=$(find /usr/local/ -type f -name mysql | head -n1)
+      if [ -z "$MYSQLBIN" ]; then
+         echo "mysql NOT FOUND"
+         exit 3
+      fi
+   fi
+fi
+
+$MYSQLBIN --socket=$SOCKET -uroot -p$PASSWORD -e "quit" > /dev/null 2>&1
+
+if [ $? -ne 0 ]; then
+	echo "CRITICAL - MySQL DOWN"
+	exit 2
+fi
+
+SBM=$($MYSQLBIN --socket=$SOCKET -uroot -p$PASSWORD -e "show slave status\G" | grep "Seconds_Behind_Master" | sed "s/.*Master: \([^$]*\)$/\1/g")
+
+case $SBM in
+  "0")
+    echo "OK - Slave sincronizado | slavemysql=0"
+    exit 0
+    ;;
+  "NULL")
+    errores=`$MYSQLBIN --socket=$SOCKET -uroot -p$PASSWORD -e "show slave status\G" | grep "Last_\(SQL\|IO\)_Error:"`
+
+#    echo "set global sql_slave_skip_counter=1;" |$MYSQLBIN --socket=$SOCKET -uroot -p$PASSWORD
+#    echo "start slave;" | mysql --socket=$SOCKET -uroot -p$PASSWORD
+
+    error1=$(echo "$errores" | head -1 | cut -d':' -f2)
+    error2=$(echo "$errores" | tail -1 | cut -d':' -f2)
+    echo "CRITICAL - $error - $error2"
+    exit 2
+    ;;
+  *)
+    if [ $SBM -le $MAXSBM ]; then
+      echo "OK - Slave sincronizado con $SBM segundos de retraso | slavemysql=$SBM"
+      exit 0
+    fi
+    if [ -n "$BACKUP" ]; then
+        echo "OK - Slave retrasado $SBM segundos (Backup activo) | slavemysql=$SBM"
+#	echo "show full processlist;" | mysql -u root -h 127.0.0.1 -p$PASSWORD
+        exit 0
+    else
+        echo "WARNING - Slave retrasado $SBM segundos | slavemysql=$SBM"
+#	echo "show full processlist;" | mysql -u root -h 127.0.0.1 -p$PASSWORD
+        exit 1
+    fi
+    ;;
+esac
+
+

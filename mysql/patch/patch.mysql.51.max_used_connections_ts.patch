@@ -1,0 +1,30 @@
+diff -Naur mysql-5.1.53/sql/mysqld.cc mysql-5.1.53_max_used_ts/sql/mysqld.cc
+--- mysql-5.1.53/sql/mysqld.cc	2010-11-03 14:39:53.000000000 +0100
++++ mysql-5.1.53_max_used_ts/sql/mysqld.cc	2011-01-26 11:21:58.000000000 +0100
+@@ -418,6 +418,7 @@
+ static uint kill_cached_threads, wake_thread;
+ static ulong killed_threads, thread_created;
+ static ulong max_used_connections;
++static ulong max_used_connections_ts;
+ static ulong my_bind_addr;			/**< the address we bind to */
+ static volatile ulong cached_thread_count= 0;
+ static const char *sql_mode_str= "OFF";
+@@ -5020,6 +5021,10 @@
+   if (connection_count > max_used_connections)
+     max_used_connections= connection_count;
+ 
++  if (connection_count >= max_used_connections)
++    max_used_connections_ts= (ulong)my_time(0);;
++
++
+   pthread_mutex_unlock(&LOCK_connection_count);
+ 
+   /* Start a new thread to handle connection. */
+@@ -7655,6 +7660,7 @@
+   {"Key_writes",               (char*) offsetof(KEY_CACHE, global_cache_write), SHOW_KEY_CACHE_LONGLONG},
+   {"Last_query_cost",          (char*) offsetof(STATUS_VAR, last_query_cost), SHOW_DOUBLE_STATUS},
+   {"Max_used_connections",     (char*) &max_used_connections,  SHOW_LONG},
++  {"Max_used_connections_ts",  (char*) &max_used_connections_ts,  SHOW_LONG},
+   {"Not_flushed_delayed_rows", (char*) &delayed_rows_in_use,    SHOW_LONG_NOFLUSH},
+   {"Open_files",               (char*) &my_file_opened,         SHOW_LONG_NOFLUSH},
+   {"Open_streams",             (char*) &my_stream_opened,       SHOW_LONG_NOFLUSH},

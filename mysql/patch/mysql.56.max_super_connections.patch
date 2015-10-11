@@ -1,0 +1,58 @@
+diff -Naur mysql-5.6.15/sql/mysqld.cc mysql-5.6.15-patch/sql/mysqld.cc
+--- mysql-5.6.15/sql/mysqld.cc	2013-11-17 19:02:54.000000000 +0100
++++ mysql-5.6.15-patch/sql/mysqld.cc	2014-01-09 17:08:40.813406330 +0100
+@@ -542,7 +542,7 @@
+ ulong specialflag=0;
+ ulong binlog_cache_use= 0, binlog_cache_disk_use= 0;
+ ulong binlog_stmt_cache_use= 0, binlog_stmt_cache_disk_use= 0;
+-ulong max_connections, max_connect_errors;
++ulong max_connections, max_connect_errors, max_super_connections;
+ ulong rpl_stop_slave_timeout= LONG_TIMEOUT;
+ my_bool log_bin_use_v1_row_events= 0;
+ bool thread_cache_size_specified= false;
+@@ -6093,12 +6093,12 @@
+ 
+   /*
+     Don't allow too many connections. We roughly check here that we allow
+-    only (max_connections + 1) connections.
++    only (max_connections + max_super_connections) connections.
+   */
+ 
+   mysql_mutex_lock(&LOCK_connection_count);
+ 
+-  if (connection_count >= max_connections + 1 || abort_loop)
++  if (connection_count >= max_connections + max_super_connections || abort_loop)
+   {
+     mysql_mutex_unlock(&LOCK_connection_count);
+ 
+diff -Naur mysql-5.6.15/sql/mysqld.h mysql-5.6.15-patch/sql/mysqld.h
+--- mysql-5.6.15/sql/mysqld.h	2013-11-17 19:02:54.000000000 +0100
++++ mysql-5.6.15-patch/sql/mysqld.h	2014-01-09 17:08:45.693444095 +0100
+@@ -191,6 +191,7 @@
+ extern ulong table_cache_size, table_def_size;
+ extern ulong table_cache_size_per_instance, table_cache_instances;
+ extern MYSQL_PLUGIN_IMPORT ulong max_connections;
++extern MYSQL_PLUGIN_IMPORT ulong max_super_connections;
+ extern ulong max_connect_errors, connect_timeout;
+ extern my_bool opt_slave_allow_batching;
+ extern my_bool allow_slave_start;
+diff -Naur mysql-5.6.15/sql/sys_vars.cc mysql-5.6.15-patch/sql/sys_vars.cc
+--- mysql-5.6.15/sql/sys_vars.cc	2013-11-17 19:02:54.000000000 +0100
++++ mysql-5.6.15-patch/sql/sys_vars.cc	2014-01-09 17:08:57.542535790 +0100
+@@ -1748,6 +1748,16 @@
+        /* max_connections is used as a sizing hint by the performance schema. */
+        sys_var::PARSE_EARLY);
+ 
++static Sys_var_ulong Sys_max_super_connections(
++	"max_super_connections", "The number of simultaneous connections "
++	"reserved for use by accounts that have the SUPER privilege",
++	GLOBAL_VAR(max_super_connections), CMD_LINE(REQUIRED_ARG),
++	VALID_RANGE(1, 100000),
++	DEFAULT(1),
++	BLOCK_SIZE(1),
++	NO_MUTEX_GUARD,
++	NOT_IN_BINLOG);
++
+ static Sys_var_ulong Sys_max_connect_errors(
+        "max_connect_errors",
+        "If there is more than this number of interrupted connections from "
