@@ -1,0 +1,103 @@
+#!/bin/bash
+
+#-p password
+
+while getopts 'u:p:' OPTION
+do
+  case $OPTION in
+  u)	MYSQLUSER="-u$OPTARG"
+	;;
+  p)    MYSQLPASSWORD="-p$OPTARG"
+	;;
+  ?)    echo -e "\nUnknown Parameter: -$OPTARG"
+        echo -e "\nUsage: $0 [-p password]\n"
+        exit 3
+        ;;
+  esac
+done
+
+MYSQLBIN=$(which mysql 2> /dev/null)
+if [ $? -ne 0 ]; then
+   if [ -f /usr/local/mysql/bin/mysql ]; then
+      MYSQLBIN=/usr/local/mysql/bin/mysql
+   else
+      MYSQLBIN=$(find /usr/local/ -type f -name mysql | head -n1)
+      if [ -z "$MYSQLBIN" ]; then
+         echo "mysql NOT FOUND"
+         exit 3
+      fi
+   fi
+fi
+
+if [ -z "$MYSQLPASSWORD" ];
+then
+	if [ -f /var/mysql/.mysql.root.pass ];
+	then
+		MYSQLPASSWORD="-p$(cat /var/mysql/.mysql.root.pass)"
+	fi
+fi
+
+if [ -z "$MYSQLUSER" ];
+then
+	MYSQLUSER="-uroot"
+fi
+
+MYSQLAUTH="$MYSQLPASSWORD $MYSQLUSER"
+
+echo "select version();" | $MYSQLBIN $MYSQLAUTH > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+   echo "Unable to connecto to MySQL"
+   exit 3 
+fi
+
+LASTLINE=$(grep -E "^[0-9]{6}" $(echo "show variables like 'log_error';" | $MYSQLBIN $MYSQLAUTH -N | head -n1 | awk '{ print $NF }') | tail -n1)
+
+if [ -z "$LASTLINE" ];
+then
+        echo "OK"
+        exit 0
+fi
+
+case $LASTLINE in
+
+*'Sort aborted'*)
+	echo "OK - sort aborted"
+	exit 0
+	;;
+
+*'lost+found'*)
+        echo "OK - lost+found found"
+        exit 0
+        ;;
+
+*'ready for connections'*)
+        echo "OK - MySQL ready"
+        exit 0
+        ;;
+
+*'is marked as crashed'*)
+        echo "CRITICAL $(echo $LASTLINE | awk '{ print $6 }') - $LASTLINE"
+        exit 2
+        ;;
+
+*shutdown* | *'Forcing close of thread'*)
+        echo "WARNING - MySQL is closing - $LASTLINE"
+        exit 1
+        ;;
+
+*Shutdown*)
+        echo "WARNING - MySQL DOWN! - $LASTLINE"
+        exit 1
+        ;;
+
+*'ERROR'*)
+        echo "WARNING - ERROR found: $LASTLINE"
+        exit 1
+        ;;
+
+*)
+        echo "OK - $LASTLINE"
+        exit 0
+
+esac
+

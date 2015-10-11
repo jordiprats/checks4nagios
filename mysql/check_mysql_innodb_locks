@@ -1,0 +1,126 @@
+#!/bin/bash
+
+#set -xv
+
+#-u user
+#-p password
+#-h host
+#-m mail
+
+passwd="-p$(cat /var/mysql/.mysql.root.pass)"
+
+if [ $? -ne 0 ]; then
+   echo -e "\nERROR: Can't read the password file\n"
+   # unknown
+   exit 3
+fi
+
+user="-uroot"
+
+while getopts ':u:p:h:m:' OPTION
+do
+  case $OPTION in
+  u)    user="-u$OPTARG"
+        ;;
+  p)    passwd="-p$OPTARG"
+        ;;
+  h)    host="-h$OPTARG"
+        ;;
+  m)    MAIL="$MAIL $OPTARG"
+        ;;
+  ?)    echo -e "\nUnknown Parameter: -$OPTARG"
+        echo -e "\nUsage: $0 [-u user] [-p password] [-h host] [[-m mail] ...]\n"
+        exit 3
+        ;;
+  esac
+done
+
+MAILCMD=$(which mail 2>/dev/null)
+
+MYSQLADMINBIN=$(which mysqladmin 2> /dev/null)
+if [ $? -ne 0 ]; then
+   if [ -f /usr/local/mysql/bin/mysqladmin ]; then
+      MYSQLADMINBIN=/usr/local/mysql/bin/mysqladmin
+   else
+      MYSQLADMINBIN=$(find /usr/local/ -type f -name mysqladmin | head -n1)
+      if [ -z "$MYSQLADMINBIN" ]; then
+         echo "mysqladmin NOT FOUND"
+         exit 3
+      fi
+   fi
+fi
+
+
+MYSQLBIN=$(which mysql 2> /dev/null)
+if [ $? -ne 0 ]; then
+   if [ -f /usr/local/mysql/bin/mysql ]; then
+      MYSQLBIN=/usr/local/mysql/bin/mysql
+   else
+      MYSQLBIN=$(find /usr/local/ -type f -name mysql | head -n1)
+      if [ -z "$MYSQLBIN" ]; then
+         echo "mysql NOT FOUND"
+         exit 3
+      fi
+   fi
+fi
+
+
+$MYSQLADMINBIN $user $passwd $host ping > /dev/null 2>&1
+
+if [ $? -ne 0 ]; then
+   echo "MYSQL DOWN at server ${host#-h}"
+   # unknown
+   exit 3 
+fi
+
+
+# Detect mysql version
+
+if [ $($MYSQLBIN -V | grep -c 5\.1) -ne 0 ]; then
+   STATUS="show innodb status"
+elif [ $($MYSQLBIN -V | grep -c 5\.5) -ne 0 ]; then
+   STATUS="show engine innodb status"
+fi
+
+#MAXCONNECTIONS=$($MYSQLBIN $user $passwd $host --raw --silent --skip-column-names --execute "show variables like 'max_connections'" | cut -f 2)
+
+
+# Different grep versions support different options
+echo a | grep -Pz a > /dev/null 2>&1
+RETORN=$?
+
+if [ $RETORN -eq 0 ]; then
+   SORTIDA=$($MYSQLBIN $user $passwd $host --raw --silent --execute "$STATUS" | grep -Pzo "(?s)^(\-+)\nTRANSACTIONS\n\1\n.*?(\-+)\n[^\n]+\n\2")
+elif [ $RETORN -eq 2 ]; then
+   SORTIDA=$($MYSQLBIN $user $passwd $host --raw --silent --execute "$STATUS" | grep -Po "(?s)^(\-+)\nTRANSACTIONS\n\1\n.*?(\-+)\n[^\n]+\n\2")
+else
+   echo "PROBABLY A GREP ERROR"
+   exit 2
+fi
+
+
+LOCKSTRUCTS=$(echo "$SORTIDA" | grep -ioc "lock struct")
+LOCKWAITS=$(echo "$SORTIDA" | grep -ioc "^LOCK WAIT")
+
+#echo "$SORTIDA"
+
+if [ $LOCKSTRUCTS -eq 0 ] && [ $LOCKWAITS -eq 0 ]; then
+   echo "OK - No locks seen. | lockstructs=0; lockwaits=0;"
+   exit 0
+else
+   if [ ! -z "$MAIL" ] && [ ! -z "$MAILCMD" ]; then
+      if [ $LOCKWAITS -gt 0 ]; then
+         echo "$SORTIDA" | $MAILCMD -s "Lock wait detected at $(hostname)" $MAIL
+      fi
+   fi
+
+   if [ -z "$MAILCMD" ] && [ ! -z "$MAIL" ];
+   then
+      echo "WARNING - NO MAIL COMMAND FOUND - Locks seen: LOCKSTRUCTS=$LOCKSTRUCTS LOCKWAITS=$LOCKWAITS | lockstructs=$LOCKSTRUCTS; lockwaits=$LOCKWAITS;"
+   else
+      echo "WARNING - Locks seen: LOCKSTRUCTS=$LOCKSTRUCTS LOCKWAITS=$LOCKWAITS | lockstructs=$LOCKSTRUCTS; lockwaits=$LOCKWAITS;"
+   fi
+   exit 1
+	
+fi
+
