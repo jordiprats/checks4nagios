@@ -1,0 +1,27 @@
+#!/bin/bash
+
+XEBIN=$(which xe 2>/dev/null)
+
+if [ -z "${XEBIN}" ];
+then
+	echo "xe not found"
+	exit 2
+fi
+
+RETURN=0
+
+for i in $($XEBIN pool-list | grep -E uuid\|name-label | awk '{ print $NF }' | paste - - | awk '{ printf "%s@%s",$2,$1 }');
+do
+	HASTATUS=$(xe pool-param-get param-name=ha-enabled uuid=$(echo $i | cut -f2 -d@))
+
+	if [ "${HASTATUS}" == "false" ];
+	then
+		RETURN=2
+		RETURNSTR="$RETURNSTR pool $(echo $i | cut -f1 -d@) has HA disabled - "
+	else
+		RETURNSTR="$RETURNSTR pool $(echo $i | cut -f1 -d@) HA enabled - "
+	fi
+done
+
+echo $RETURNSTR
+exit $RETURN
