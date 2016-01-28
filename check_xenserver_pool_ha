@@ -12,7 +12,7 @@ RETURN=0
 
 for i in $($XEBIN pool-list | grep -E uuid\|name-label | awk '{ print $NF }' | paste - - | awk '{ printf "%s@%s\n",$2,$1 }');
 do
-	HASTATUS=$(xe pool-param-get param-name=ha-enabled uuid=$(echo $i | cut -f2 -d@))
+	HASTATUS=$($XEBIN pool-param-get param-name=ha-enabled uuid=$(echo $i | cut -f2 -d@))
 
 	if [ "${HASTATUS}" == "false" ];
 	then
