@@ -1,0 +1,61 @@
+#!/bin/bash
+
+XEBIN=$(which xe 2>/dev/null)
+
+if [ -z "${XEBIN}" ];
+then
+	echo "xe not found"
+	exit 2
+fi
+
+wval=70
+cval=80
+
+while getopts 'v:w:c:' OPTION
+do
+  case $OPTION in
+  w)    wflag=1
+        wval="$OPTARG"
+        ;;
+  c)    cflag=1
+        cval="$OPTARG"
+        ;;
+  v)    vflag=1
+        SRUID="$OPTARG"
+        ;;
+  ?)    echo Argument invalid
+        printusage
+        exit 3
+        ;;
+  esac
+done
+
+if [ -z "$SRUID" ];
+then
+	echo "which SR do you want to check today?"
+	exit 3
+fi
+
+USAGE=$($XEBIN sr-param-get param-name=physical-utilisation uuid=$SRUID)
+TOTAL=$($XEBIN sr-param-get param-name=physical-size uuid=$SRUID)
+
+PERCENT=$(echo "($USAGE/$TOTAL)*100" | bc -l | cut -f1 -d.)
+
+STATUS="$SRUID $PERCENT% used| used=$USAGE; total=$TOTAL;"
+
+if [ -z "$PERCENT" ];
+then
+	echo "UNKNOWN"
+	exit 3;
+elif [ "$PERCENT" -ge "$cval" ];
+then
+	echo CRITICAL - $STATUS
+	exit 2
+elif [ "$PERCENT" -ge "$wval" ];
+then
+	echo WARNING - $STATUS
+	exit 1
+else
+	echo OK - $STATUS
+	exit 0
+fi
