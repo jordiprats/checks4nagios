@@ -1,0 +1,42 @@
+#!/bin/bash
+
+POOLDATA=$(lvdisplay /dev/vg0/docker-pool | grep "Allocated pool data" | awk '{ print $NF }' | cut -f 1 -d% | cut -f1 -d.)
+POOLDATARAW=$(lvdisplay /dev/vg0/docker-pool | grep "Allocated pool data" | awk '{ print $NF }')
+
+wval=70
+cval=80
+
+while getopts 'v:w:c:' OPTION
+do
+  case $OPTION in
+  w)    wval="$OPTARG"
+        ;;
+  c)    cval="$OPTARG"
+        ;;
+  d)    vflag=1
+        SRUID="$OPTARG"
+        ;;
+  ?)    echo Argument invalid
+        exit 3
+        ;;
+  esac
+done
+
+STATUS="Allocated pool data ${POOLDATARAW} | percent=${POOLDATA};"
+
+if [ -z "$POOLDATA" ];
+then
+	echo "UNKNOWN"
+	exit 3;
+elif [ "$POOLDATA" -ge "$cval" ];
+then
+	echo CRITICAL - $STATUS
+	exit 2
+elif [ "$POOLDATA" -ge "$wval" ];
+then
+	echo WARNING - $STATUS
+	exit 1
+else
+	echo OK - $STATUS
+	exit 0
+fi
