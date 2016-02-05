@@ -1,12 +1,9 @@
 #!/bin/bash
 
-POOLDATA=$(lvdisplay /dev/vg0/docker-pool | grep "Allocated pool data" | awk '{ print $NF }' | cut -f 1 -d% | cut -f1 -d.)
-POOLDATARAW=$(lvdisplay /dev/vg0/docker-pool | grep "Allocated pool data" | awk '{ print $NF }')
-
 wval=70
 cval=80
 
-while getopts 'v:w:c:' OPTION
+while getopts 'd:w:c:' OPTION
 do
   case $OPTION in
   w)    wval="$OPTARG"
@@ -14,13 +11,22 @@ do
   c)    cval="$OPTARG"
         ;;
   d)    vflag=1
-        SRUID="$OPTARG"
+        LVDISK="$OPTARG"
         ;;
   ?)    echo Argument invalid
         exit 3
         ;;
   esac
 done
+
+if [ -z "${LVDISK}" ];
+then
+  echo "which docker pool do you want to check today?"
+  exit 3
+fi
+
+POOLDATA=$(lvdisplay ${LVDISK} | grep "Allocated pool data" | awk '{ print $NF }' | cut -f 1 -d% | cut -f1 -d.)
+POOLDATARAW=$(lvdisplay ${LVDISK} | grep "Allocated pool data" | awk '{ print $NF }')
 
 STATUS="Allocated pool data ${POOLDATARAW} | percent=${POOLDATA};"
 

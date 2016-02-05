@@ -1,12 +1,10 @@
 #!/bin/bash
 
-METADATA=$(lvdisplay /dev/vg0/docker-pool | grep "Allocated metadata" | awk '{ print $NF }' | cut -f 1 -d% | cut -f1 -d.)
-METADATARAW=$(lvdisplay /dev/vg0/docker-pool | grep "Allocated metadata" | awk '{ print $NF }')
 
 wval=70
 cval=80
 
-while getopts 'v:w:c:' OPTION
+while getopts 'd:w:c:' OPTION
 do
   case $OPTION in
   w)    wval="$OPTARG"
@@ -14,13 +12,22 @@ do
   c)    cval="$OPTARG"
         ;;
   d)    vflag=1
-        SRUID="$OPTARG"
+        LVDISK="$OPTARG"
         ;;
   ?)    echo Argument invalid
         exit 3
         ;;
   esac
 done
+
+if [ -z "${LVDISK}" ];
+then
+  echo "which docker pool do you want to check today?"
+  exit 3
+fi
+
+METADATA=$(lvdisplay ${LVDISK} | grep "Allocated metadata" | awk '{ print $NF }' | cut -f 1 -d% | cut -f1 -d.)
+METADATARAW=$(lvdisplay ${LVDISK} | grep "Allocated metadata" | awk '{ print $NF }')
 
 STATUS="Allocated metadata ${METADATARAW} | percent=${METADATA};"
 
