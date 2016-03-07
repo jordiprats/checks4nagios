@@ -1,0 +1,63 @@
+#!/bin/bash
+
+XEBIN=$(which xe 2>/dev/null)
+
+if [ -z "${XEBIN}" ];
+then
+	echo "xe not found"
+	exit 2
+fi
+
+WVAL=91
+CVAL=90
+
+while getopts 'v:w:c:' OPTION
+do
+  case $OPTION in
+  w)    WVAL="$OPTARG"
+        ;;
+  c)    CVAL="$OPTARG"
+        ;;
+  ?)    echo Argument invalid
+        exit 3
+        ;;
+  esac
+done
+
+NOW_TS=$(date +%s)
+
+WSVAL=$(($WVAL*86400))
+CSVAL=$(($CVAL*86400))
+
+RETURNVAL=0
+
+for i in $($XEBIN host-list | grep ^uuid | awk '{ print $NF }');
+do
+	EXPIRY_TS=$(date -d "$($XEBIN host-license-view  host-uuid=$i | grep 'expiry:' | awk '{ print $NF }' | grep -Eo '[0-9]{8}')" +%s)
+
+	DIFF_TS=$(($EXPIRY_TS-NOW_TS))
+
+	if [ -z "$EXPIRY_TS" ];
+	then
+		RETURNSTR="$RETURNSTR CRITICAL - host $i is probably unlicensed ;"
+		RETURNVAL=2
+	elif [ "$NOW_TS" -gt "$EXPIRY_TS" ];
+	then
+		RETURNSTR="$RETURNSTR CRITICAL - host $i already expired ;"
+		RETURNVAL=2
+	elif [ "$DIFF_TS" -lt "$CSVAL" ];
+	then
+		RETURNSTR="$RETURNSTR CRITICAL - host $i is going to expire in less than $CVAL days;"
+		RETURNVAL=2
+	elif [ "$DIFF_TS" -lt "$WSVAL" ];
+	then
+                RETURNSTR="$RETURNSTR WARNING - host $i is going to expire in less than $WVAL days;"
+		if [ "$RETURNVAL" -lt 1 ]; then RETURNVAL=1; fi
+	else
+		RETURNSTR="$RETURNSTR OK - host $i is going to expire at $(date -d "@$EXPIRY_TS" '+%d-%m-%Y');"
+	fi
+
+done
+
+echo $RETURNSTR
+exit $RETURNVAL
