@@ -1,0 +1,57 @@
+#!/bin/bash
+
+DIR='/var/lib/puppet'
+MAXDIFF=7200
+WARNDIFF=3600
+
+while getopts 'd:hm:' OPT; do
+  case $OPT in
+    d)  DIR=$OPTARG;;
+    c)  MAXDIFF=$OPTARG;;
+    w)  WARNDIFF=$OPTARG;;
+    h)  JELP="yes";;
+    *)  JELP="yes";;
+  esac
+done
+
+shift $(($OPTIND - 1))
+
+#/var/lib/puppet/state/last_run_summary.yaml
+
+if [ ! -e "${DIR}/state/last_run_summary.yaml" ];
+then
+	echo "last_run_summary.yaml does not exists"
+	exit 2
+fi
+
+LAST_RUN=$(grep last_run /var/lib/puppet/state/last_run_summary.yaml | awk '{ print $NF }')
+
+if [ -z "$LAST_RUN" ];
+then
+	echo "error getting data from last_run_summary.yaml"
+	exit 2
+fi
+
+NOW=$(date +%s)
+
+DIFF_LAST_RUN=$(($NOW-$LAST_RUN))
+
+# PERFDATA="$PERFDATA difflastrun=$DIFF_LAST_RUN;"
+
+PERFDATA="$PERFDATA $(grep resources: /var/lib/puppet/state/last_run_summary.yaml -A7 | grep -v resources: | paste '-sd;')"
+
+if [ $DIFF_LAST_RUN -ge $MAXDIFF ];
+then
+	echo "CRITICAL - last run: $DIFF_LAST_RUN seconds ago |$PERFDATA"
+	exit 2
+fi
+
+if [ $DIFF_LAST_RUN -ge $WARNDIFF ];
+then
+        echo "WARNING - last run: $DIFF_LAST_RUN seconds ago |$PERFDATA"
+        exit 1
+fi
+
+echo "OK - last run: $DIFF_LAST_RUN seconds ago |$PERFDATA"
+exit 0
+
