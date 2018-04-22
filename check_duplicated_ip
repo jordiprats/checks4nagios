@@ -1,0 +1,40 @@
+#!/bin/bash
+
+PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/root/bin"
+
+ARPINGBIN=$(which arping 2>/dev/null)
+if [ -z "${ARPINGBIN}" ];
+then
+  echo "arping NOT FOUND"
+  exit 3
+fi
+
+while getopts 't:' OPT; do
+  case $OPT in
+    t)  TIMEOUT_ARPING=$OPTARG;;
+  esac
+done
+
+shift $(($OPTIND - 1))
+
+TIMEOUT_ARPING=${TIMEOUT_ARPING-5}
+
+if [ -z "$1" ];
+then
+  echo "usage: $0 [ -t <timeout>] <IP>"
+  exit 3
+fi
+
+ARPING_OUTPUT=$($ARPINGBIN -D $1 -w $TIMEOUT_ARPING)
+ARPING_RET=$?
+
+RECEIVED_COUNT=$(echo "${ARPING_OUTPUT}" | grep Received | tail -n1 | awk '{ print $2 }')
+
+if [ "${ARPING_RET}" -eq 0 ];
+then
+  echo "OK - $1 - ${RECEIVED}|received=${RECEIVED_COUNT}"
+  exit 0
+else
+  echo "CRITICAL - duplicated IP detected - $1 - ${RECEIVED}|received=${RECEIVED_COUNT}"
+  exit 2
+fi
