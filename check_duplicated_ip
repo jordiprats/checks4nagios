@@ -25,16 +25,28 @@ then
   exit 3
 fi
 
-ARPING_OUTPUT=$($ARPINGBIN -D $1 -w $TIMEOUT_ARPING)
-ARPING_RET=$?
+RECEIVED_COUNT=$(sudo $ARPINGBIN -D $1 -w $TIMEOUT_ARPING | grep Received | tail -n1 | awk '{ print $2 }')
 
-RECEIVED_COUNT=$(echo "${ARPING_OUTPUT}" | grep Received | tail -n1 | awk '{ print $2 }')
+LOCAL_IP_COUNT=$(ip a | grep -Ec "\b$1\b" 2>/dev/null)
 
-if [ "${ARPING_RET}" -eq 0 ];
+if [ "${LOCAL_IP_COUNT}" -eq 1 ];
 then
-  echo "OK - $1 - ${RECEIVED}|received=${RECEIVED_COUNT}"
-  exit 0
+  if [ "${RECEIVED_COUNT}" -eq 0 ];
+  then
+    echo "OK - $1 - ${RECEIVED}|received=${RECEIVED_COUNT}"
+    exit 0
+  else
+    echo "CRITICAL - duplicated IP detected - $1 - ${RECEIVED}|received=${RECEIVED_COUNT}"
+    exit 2
+  fi
 else
-  echo "CRITICAL - duplicated IP detected - $1 - ${RECEIVED}|received=${RECEIVED_COUNT}"
-  exit 2
+  if [ "${RECEIVED_COUNT}" -le 1 ];
+  then
+    echo "OK - $1 - ${RECEIVED}|received=${RECEIVED_COUNT}"
+    exit 0
+  else
+    echo "CRITICAL - duplicated IP detected - $1 - ${RECEIVED}|received=${RECEIVED_COUNT}"
+    exit 2
+  fi
 fi
+
